@@ -1,0 +1,496 @@
+/* X-Tracker Side Panel Styles */
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: white;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.xt-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Header */
+.xt-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.xt-title {
+  color: #0f1419;
+}
+
+.xt-greeting-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.xt-greeting-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.xt-greeting-hello {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.2px;
+}
+
+.xt-greeting-subtitle {
+  font-size: 13px;
+  color: #536471;
+}
+
+.xt-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.xt-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  color: #666;
+  font-size: 16px;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xt-btn-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.xt-btn:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+/* Content Area */
+.xt-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #f9f9f9;
+}
+
+/* View Sections */
+.view-section {
+  padding: 16px;
+}
+
+.view-section.hidden {
+  display: none;
+}
+
+.status-text {
+  padding: 10px 0;
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+}
+
+/* Platform Tabs */
+.platform-tabs {
+  display: flex;
+  padding: 0 16px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #536471;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.tab-btn.active {
+  color: #0f1419;
+  font-weight: 700;
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: #1d9bf0;
+  border-radius: 3px 3px 0 0;
+}
+
+.tab-btn:hover {
+  background: #f7f9f9;
+}
+
+/* Settings View Styles */
+.input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.input-group input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+}
+
+.input-group input:focus {
+  border-color: #1d9bf0;
+}
+
+.primary-btn {
+  background: #1d9bf0;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.primary-btn:hover {
+  background: #1a8cd8;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #666;
+}
+
+.text-btn {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+.text-btn:hover {
+  color: #f4212e;
+}
+
+#userList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+#userList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.user-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0; /* Enable text truncation */
+}
+
+.user-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #1d9bf0;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.user-info-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.username {
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+
+.edit-btn {
+  background: none;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px;
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.2s, color 0.2s;
+}
+
+#userList li:hover .edit-btn {
+  opacity: 1; /* Show on hover */
+}
+
+.edit-btn:hover {
+  color: #1d9bf0;
+}
+
+#userList li:last-child {
+  border-bottom: none;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 4px;
+}
+
+.delete-btn:hover {
+  color: #f4212e;
+}
+
+.control-row {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.control-row select {
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.full-width-btn {
+  width: 100%;
+  margin-top: 24px;
+  padding: 10px;
+}
+
+/* Feed View Styles */
+.tweet-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1px solid #eee;
+  transition: transform 0.2s;
+}
+
+.tweet-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.tweet-header {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #eee;
+}
+
+.text-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.name {
+  font-weight: 700;
+  color: #0f1419;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.handle {
+  color: #536471;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reply-badge {
+  background-color: #f5f8fa;
+  color: #536471;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  border: 1px solid #e1e8ed;
+}
+
+.time {
+  font-size: 12px;
+  color: #536471;
+  margin-top: 2px;
+}
+
+.tweet-text {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #0f1419;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.tweet-text.collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.view-more-btn {
+  background: none;
+  border: none;
+  color: #1d9bf0;
+  cursor: pointer;
+  padding: 4px 0 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-block;
+}
+
+.view-more-btn:hover {
+  text-decoration: underline;
+}
+
+.tweet-media {
+  margin-top: 10px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #cfd9de;
+}
+
+.tweet-media img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.tweet-footer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.tweet-footer a {
+  color: #1d9bf0;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tweet-footer a:hover {
+  text-decoration: underline;
+}
+
+.loading-spinner {
+  padding: 40px;
+  text-align: center;
+  color: #536471;
+  font-size: 14px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #536471;
+}
+
+/* Scrollbar */
+.xt-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.xt-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.xt-content::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+.xt-content::-webkit-scrollbar-thumb:hover {
+  background: #ccc;
+}

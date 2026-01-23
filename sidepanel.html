@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X-Tracker Side Panel</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="xt-container">
+    <div class="xt-header">
+      <div class="xt-title">
+        <div class="xt-greeting-line">
+          <span class="xt-greeting-emoji" aria-hidden="true">👋</span>
+          <span class="xt-greeting-hello">Hi</span>
+          <span class="xt-greeting-subtitle">It’s a new day.</span>
+        </div>
+      </div>
+
+      <div class="xt-controls">
+        <button class="xt-btn" id="xt-settings-toggle" type="button" title="Settings" aria-label="Settings">
+          <svg class="xt-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M19.4 15a8.4 8.4 0 0 0 .1-1 8.4 8.4 0 0 0-.1-1l2-1.6a.7.7 0 0 0 .2-.9l-1.9-3.3a.7.7 0 0 0-.8-.3l-2.3.9a7.7 7.7 0 0 0-1.7-1l-.3-2.4a.7.7 0 0 0-.7-.6H9.9a.7.7 0 0 0-.7.6l-.3 2.4a7.7 7.7 0 0 0-1.7 1l-2.3-.9a.7.7 0 0 0-.8.3L2.2 10.5a.7.7 0 0 0 .2.9l2 1.6a8.4 8.4 0 0 0-.1 1 8.4 8.4 0 0 0 .1 1l-2 1.6a.7.7 0 0 0-.2.9l1.9 3.3a.7.7 0 0 0 .8.3l2.3-.9a7.7 7.7 0 0 0 1.7 1l.3 2.4c.1.4.4.6.7.6h4.2c.4 0 .6-.2.7-.6l.3-2.4a7.7 7.7 0 0 0 1.7-1l2.3.9a.7.7 0 0 0 .8-.3l1.9-3.3a.7.7 0 0 0-.2-.9l-2-1.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="xt-btn" id="xt-refresh" type="button" title="Reload" aria-label="Reload">
+          <svg class="xt-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M20 12a8 8 0 1 1-2.3-5.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    
+    <div class="xt-content" id="xt-content">
+      <!-- Feed View -->
+      <div id="feedView" class="view-section">
+        <div id="statusText" class="status-text">Ready</div>
+        <div id="tweetsContainer">
+            <div class="empty-state">
+              No tweets loaded.<br><br>
+              1. Click <b>Settings (⚙️)</b> to add users.<br>
+              2. Ensure users are <b>checked</b> (✅).<br>
+              3. Click <b>Fetch & Show Tweets</b>.
+            </div>
+        </div>
+      </div>
+
+      <!-- Settings View -->
+      <div id="settingsView" class="view-section hidden">
+        <div class="input-group">
+          <input type="text" id="userInput" placeholder="X / Weibo / Xueqiu username or URL" />
+          <button id="addBtn" class="primary-btn">Add</button>
+        </div>
+
+        <div class="list-container">
+          <div class="list-header">
+            <span>Following (<span id="count">0</span>)</span>
+            <button id="clearBtn" class="text-btn">Clear All</button>
+          </div>
+          <ul id="userList">
+            <!-- Users will be added here -->
+          </ul>
+          <div id="emptyStateList" class="empty-state" style="padding: 20px 0;">
+            No users added yet.
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="control-row">
+            <label>Time Range:</label>
+            <select id="timeRange">
+              <option value="1">Last 24 Hours</option>
+              <option value="3">Last 3 Days</option>
+              <option value="7">Last Week</option>
+            </select>
+          </div>
+          
+          <div class="control-row" style="justify-content: flex-start; gap: 8px;">
+            <input type="checkbox" id="includeReplies">
+            <label for="includeReplies">Include Replies</label>
+          </div>
+        </div>
+
+        <button id="fetchBtn" class="primary-btn full-width-btn">Fetch & Show Tweets</button>
+      </div>
+    </div>
+  </div>
+  <script src="sidepanel.js?v=1.5"></script>
+</body>
+</html>
