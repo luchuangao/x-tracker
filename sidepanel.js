@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <button class="tab-btn active" data-tab="x">X</button>
     <button class="tab-btn" data-tab="weibo">Weibo</button>
     <button class="tab-btn" data-tab="xueqiu">Xueqiu</button>
+    <button class="tab-btn" data-tab="xiaohongshu">Xiaohongshu</button>
   `;
   
   // Insert tabs before user list
@@ -250,7 +251,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = new URL(input);
         username = url.pathname.split('/').filter(p => p)[0];
        } catch(e) {}
-    } else {
+    } else if (input.includes('xiaohongshu.com') || input.includes('xhslink.com')) {
+      platform = 'xiaohongshu';
+      try {
+        // If it's a short link or other format, we might just keep the URL or try to resolve it later.
+        // For now, let's assume standard profile URL: https://www.xiaohongshu.com/user/profile/ID
+        const url = new URL(input);
+        if (url.pathname.includes('/user/profile/')) {
+          username = url.pathname.split('/user/profile/')[1];
+        } else {
+          // Fallback: just store the ID if provided directly, or maybe we can't parse it easily without full URL
+          // If input is just ID (usually 24 hex chars)
+          if (/^[a-f0-9]{24}$/.test(input)) {
+             username = input;
+          }
+        }
+      } catch(e) {}
+      
+      // If we couldn't parse username but it looks like a valid ID string
+       if (!username) {
+          if (/^[a-f0-9]{24}$/.test(input)) {
+             username = input;
+          } else if (input.startsWith('http')) {
+             // If it's a full URL (like xhslink.com), just use the URL as the handle
+             username = input;
+          }
+       }
+     } else {
        // Heuristic: if input contains non-ascii, likely xueqiu nickname
        // Or if input starts with @ -> X
        if (/^@/.test(input)) {
@@ -283,12 +310,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeTab === 'x') return u.platform === 'x' || !u.platform;
         if (activeTab === 'weibo') return u.platform === 'weibo';
         if (activeTab === 'xueqiu') return u.platform === 'xueqiu';
+        if (activeTab === 'xiaohongshu') return u.platform === 'xiaohongshu';
         return false;
     });
 
     if (filteredUsers.length === 0) {
       emptyStateList.classList.remove('hidden');
-      emptyStateList.textContent = `No ${activeTab === 'x' ? 'X' : activeTab === 'weibo' ? 'Weibo' : 'Xueqiu'} users added yet.`;
+      emptyStateList.textContent = `No ${activeTab === 'x' ? 'X' : activeTab === 'weibo' ? 'Weibo' : activeTab === 'xueqiu' ? 'Xueqiu' : 'Xiaohongshu'} users added yet.`;
     } else {
       emptyStateList.classList.add('hidden');
       filteredUsers.forEach((user) => {
@@ -322,11 +350,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeTab === 'x') return u.platform === 'x' || !u.platform;
         if (activeTab === 'weibo') return u.platform === 'weibo';
         if (activeTab === 'xueqiu') return u.platform === 'xueqiu';
+        if (activeTab === 'xiaohongshu') return u.platform === 'xiaohongshu';
         return false;
     });
 
     if (targetUsers.length === 0) { 
-      tweetsContainer.innerHTML = `<div class="empty-state">No active ${activeTab === 'x' ? 'X' : activeTab === 'weibo' ? 'Weibo' : 'Xueqiu'} users selected.</div>`;
+      tweetsContainer.innerHTML = `<div class="empty-state">No active ${activeTab === 'x' ? 'X' : activeTab === 'weibo' ? 'Weibo' : activeTab === 'xueqiu' ? 'Xueqiu' : 'Xiaohongshu'} users selected.</div>`;
       return; 
     }
 
@@ -336,8 +365,10 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchX(handles);
     } else if (activeTab === 'weibo') {
         fetchWeibo(handles);
-    } else {
+    } else if (activeTab === 'xueqiu') {
         fetchXueqiu(handles);
+    } else {
+        fetchXiaohongshu(handles);
     }
   }
 
@@ -420,6 +451,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function fetchXiaohongshu(handles) {
+    currentFetchPlatform = 'xiaohongshu';
+    tweetsContainer.innerHTML = '<div class="empty-state">Opening Xiaohongshu pages...</div>';
+    statusText.textContent = 'Opening pages...';
+
+    let count = 0;
+    handles.forEach(target => {
+        let url;
+        // Check if target is a full URL or ID
+        if (target.startsWith('http')) {
+             url = target;
+        } else {
+             // Assume ID
+             url = `https://www.xiaohongshu.com/user/profile/${target}`;
+        }
+        
+        chrome.tabs.create({ url: url, active: false });
+        count++;
+    });
+
+    tweetsContainer.innerHTML = `
+        <div class="empty-state">
+            <p>Opened ${count} Xiaohongshu page${count > 1 ? 's' : ''} in new tabs.</p>
+            <p style="font-size: 12px; color: #999; margin-top: 8px;">
+                (Xiaohongshu automated scraping is not supported yet)
+            </p>
+        </div>
+    `;
+    statusText.textContent = 'Done';
+  }
+
   function startPolling() {
     if (statusPoll) clearInterval(statusPoll);
     
@@ -492,6 +554,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ? '<div class="empty-state">No posts found.</div>'
         : currentFetchPlatform === 'weibo'
         ? '<div class="empty-state">No posts found.</div>'
+        : currentFetchPlatform === 'xiaohongshu'
+        ? '<div class="empty-state">No posts found.</div>'
         : '<div class="empty-state">No tweets found in this time range.</div>';
       return;
     }
@@ -534,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ${mediaHtml}
         <div class="tweet-footer">
           <a href="${escapeHtml(tweet.tweetUrl)}" target="_blank">
-            ${tweet.platform === 'weibo' ? 'View on Weibo' : tweet.platform === 'xueqiu' ? 'View on Xueqiu' : 'View on X'}
+            ${tweet.platform === 'weibo' ? 'View on Weibo' : tweet.platform === 'xueqiu' ? 'View on Xueqiu' : tweet.platform === 'xiaohongshu' ? 'View on Xiaohongshu' : 'View on X'}
           </a>
         </div>
       `;
