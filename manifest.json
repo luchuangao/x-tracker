@@ -17,6 +17,8 @@
     "https://s.weibo.com/*",
     "https://www.xiaohongshu.com/*",
     "https://xhslink.com/*",
+    "https://*.substack.com/*",
+    "https://substack.com/*",
     "<all_urls>"
   ],
   "background": {

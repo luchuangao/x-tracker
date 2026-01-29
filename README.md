@@ -2,7 +2,7 @@
 
 ## 1. 产品概述 (Product Overview)
 
-**X-Tracker** 是一款专为 X、微博 (Weibo) 和雪球 (Xueqiu) 用户打造的高效信息聚合与监控 Chrome 扩展程序。它旨在解决用户在海量信息流中难以聚焦关注核心内容的问题。通过侧边栏 (Side Panel) 的形式，X-Tracker 允许用户创建自定义的关注列表，按需筛选特定时间范围内的推文/动态，并提供无缝的浏览体验。
+**X-Tracker** 是一款专为 X、微博 (Weibo)、雪球 (Xueqiu)、小红书 (Xiaohongshu) 和 Substack 用户打造的高效信息聚合与监控 Chrome 扩展程序。它旨在解决用户在海量信息流中难以聚焦关注核心内容的问题。通过侧边栏 (Side Panel) 的形式，X-Tracker 允许用户创建自定义的关注列表，按需筛选特定时间范围内的推文/动态，并提供无缝的浏览体验。
 
 不同于传统的 Timeline，X-Tracker 就像您的私人情报中心，让您可以“只看想看的人，只读想读的内容”。
 
@@ -10,10 +10,11 @@
 
 ### 2.0 多平台支持 (Multi-Platform Support) [New]
 - **X & 雪球 (Xueqiu)**：支持完整的内容抓取、聚合与时间筛选功能。
-- **微博 (Weibo) & 小红书 (Xiaohongshu) 快速访问**：由于平台限制，提供“一键直达”功能。在侧边栏中管理关注列表，点击 Fetch 时会自动在后台为您批量打开选中博主的个人主页。
-- **分页管理 (Tabbed Interface)**：通过顶部的标签页（X / Weibo / Xueqiu / Xiaohongshu）分类管理不同平台的用户，界面更加清爽有序。
+- **微博 (Weibo) & 小红书 (Xiaohongshu) & Substack 快速访问**：由于平台限制，提供“一键直达”功能。在侧边栏中管理关注列表，点击 Fetch 时会自动在后台为您批量打开选中博主的主页。
+- **分页管理 (Tabbed Interface)**：通过顶部的标签页（X / Weibo / Xueqiu / Xiaohongshu / Substack）分类管理不同平台的用户，界面更加清爽有序。
 - **别名系统 (Alias System)**：支持为用户设置备注名（Alias）。
 - **智能识别**：添加用户时，系统会自动根据输入内容（URL 或中文昵称）识别平台并归类到对应的标签页下。
+- **多语言支持 (Multi-language Support)**：内置中英文切换功能，满足不同语言用户的需求。
 
 ### 2.1 全局侧边栏 (Global Side Panel)
 - **随时唤起**：基于 Chrome Side Panel API 构建，用户可以在浏览器的任意页面（不仅仅是 X.com）通过点击扩展图标唤起侧边栏。
@@ -64,15 +65,16 @@ X-Tracker 采用最新的 **Manifest V3** 标准开发，确保了扩展的安�
 ## 5. 使用说明 (User Guide)
 
 1.  **启动**：点击浏览器右上角的 X-Tracker 图标，侧边栏将从右侧滑出。
-2.  **添加关注**：在顶部输入框输入 X 用户名（例如 `elonmusk`）、微博昵称（例如 `央视新闻`）、雪球用户（例如 `但斌`）或小红书链接，点击 `Add` 按钮。
+2.  **添加关注**：在顶部输入框输入 X 用户名（例如 `elonmusk`）、微博昵称（例如 `央视新闻`）、雪球用户（例如 `但斌`）、小红书链接或 Substack 链接（例如 `https://lennyrachitsky.substack.com/`），点击 `Add` 按钮。
 3.  **调整视图**：
-    - 在顶部标签页切换平台（X / Weibo / Xueqiu / Xiaohongshu）。
+    - 在顶部标签页切换平台（X / Weibo / Xueqiu / Xiaohongshu / Substack）。
     - 在列表中勾选您想查看的用户，支持点击铅笔图标修改备注。
     - 在底部设置栏选择时间范围（默认 24h）。
 4.  **获取内容**：点击底部的 **"Fetch"** 按钮：
     - **X/雪球**：自动抓取并聚合显示内容。
-    - **微博/小红书**：自动在后台打开选中博主的主页。
+    - **微博/小红书/Substack**：自动在后台打开选中博主的主页。
 5.  **设置与刷新**：顶部导航栏提供设置按钮（齿轮图标）和刷新按钮。
+6.  **切换语言**：点击顶部的 "EN/中" 按钮即可在英语和中文之间快速切换。
 
 ## 6. 常见问题 (FAQ)
 
@@ -86,4 +88,4 @@ A: 这是 Chrome 浏览器的原生行为，扩展程序无法直接控制。您
 A: 不是。X-Tracker 使用全域 Side Panel 技术，支持在任何网页（如 Google, GitHub, 甚至空白页）上唤起并使用。
 
 ---
-*Document Version 1.2 | Last Updated: 2026-01-28*
+*Document Version 1.4 | Last Updated: 2026-01-29*
