@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Views
   const feedView = document.getElementById('feedView');
   const settingsView = document.getElementById('settingsView');
+  // const feedToggleBtn = document.getElementById('xt-feed-toggle'); // Removed
   
   // Feed Elements
   const tweetsContainer = document.getElementById('tweetsContainer');
@@ -19,26 +20,36 @@ document.addEventListener('DOMContentLoaded', () => {
   const userInput = document.getElementById('userInput');
   const addBtn = document.getElementById('addBtn');
   const userList = document.getElementById('userList');
-  const countSpan = document.getElementById('count');
-  const clearBtn = document.getElementById('clearBtn');
+  const listSelect = document.getElementById('listSelect');
+  const listActions = document.getElementById('listActions');
+  const editListBtn = document.getElementById('editListBtn');
+  const deleteListBtn = document.getElementById('deleteListBtn');
+  const listMenuBtn = document.getElementById('listMenuBtn');
+  const listMenuDropdown = document.getElementById('listMenuDropdown');
+  const newListBtn = document.getElementById('newListBtn');
+  const inputError = document.getElementById('inputError');
+  const importBtn = document.getElementById('importBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const importInput = document.getElementById('importInput');
   const emptyStateList = document.getElementById('emptyStateList');
   const timeRange = document.getElementById('timeRange');
   const includeReplies = document.getElementById('includeReplies');
   const fetchBtn = document.getElementById('fetchBtn');
   
-  // List Management Elements
-  const newListBtn = document.getElementById('newListBtn');
-  const tabsListContainer = document.getElementById('tabsList');
+  // List Management Elements (Old ones commented out in HTML, but logic was here)
+  // const newListBtn = document.getElementById('newListBtn'); // We might need to add this back to Top Tabs
+  // const tabsListContainer = document.getElementById('tabsList');
 
   // State
   let users = [];
   let tabs = [];
   let statusPoll = null;
   let currentFetchPlatform = 'x';
-  let activeTab = 'x'; // This is now a Tab ID
+  let activeTab = 'all'; // Default to ALL
   let currentLang = 'en';
 
   const DEFAULT_TABS = [
+    { id: 'all', name: 'All', type: 'system', platform: 'all' },
     { id: 'x', name: 'X', type: 'system', platform: 'x' },
     { id: 'weibo', name: 'Weibo', type: 'system', platform: 'weibo' },
     { id: 'xueqiu', name: 'Xueqiu', type: 'system', platform: 'xueqiu' },
@@ -54,8 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
       status_initializing_x: "Initializing X...",
       status_connecting_x: "Connecting to X...",
       status_opening_weibo: "Opening pages...",
-      status_opening_xueqiu: "Initializing Xueqiu...",
-      status_connecting_xueqiu: "Connecting to Xueqiu...",
+      status_opening_xueqiu: "Opening pages...",
       status_opening_xhs: "Opening pages...",
       status_opening_substack: "Opening pages...",
       status_done: "Done",
@@ -65,7 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
       input_placeholder: "X / Weibo / Xueqiu / Substack username or URL",
       btn_add: "Add",
       label_following: "Following",
-      btn_clear_all: "Clear All",
+      btn_import: "Import",
+      btn_export: "Export",
       empty_list: "No users added yet.",
       label_time_range: "Time Range:",
       option_24h: "Last 24 Hours",
@@ -77,14 +88,14 @@ document.addEventListener('DOMContentLoaded', () => {
       msg_invalid_url: "Invalid URL/Username",
       msg_already_added: "Already added",
       msg_enter_alias: "Enter alias for this user (leave empty to use original handle):",
-      msg_remove_all: "Remove all users in this list?",
       msg_no_active_users: "No active users selected in this list.",
       
-      label_lists: "Lists",
       btn_new_list: "+ New List",
       msg_enter_list_name: "Enter list name:",
       msg_delete_list: "Delete list '{name}' and all its users?",
       msg_rename_list: "Rename list:",
+      msg_import_success: "Imported successfully!",
+      msg_import_error: "Import failed: Invalid file format",
 
       feed_empty_state: `
         No tweets loaded.<br><br>
@@ -98,6 +109,15 @@ document.addEventListener('DOMContentLoaded', () => {
             <p>Opened {count} Weibo page{s} in new tabs.</p>
             <p style="font-size: 12px; color: #999; margin-top: 8px;">
                 (Weibo automated scraping is temporarily disabled)
+            </p>
+        </div>
+      `,
+
+      xueqiu_empty_state: `
+        <div class="empty-state">
+            <p>Opened {count} Xueqiu page{s} in new tabs.</p>
+            <p style="font-size: 12px; color: #999; margin-top: 8px;">
+                (Xueqiu automated scraping is temporarily disabled)
             </p>
         </div>
       `,
@@ -121,13 +141,16 @@ document.addEventListener('DOMContentLoaded', () => {
       `,
       
       feed_loading_x: '<div class="loading-spinner">Connecting to X...</div>',
-      feed_loading_xueqiu: '<div class="loading-spinner">Connecting to Xueqiu...</div>',
+      feed_opening_xueqiu: '<div class="empty-state">Opening Xueqiu pages...</div>',
       feed_opening_weibo: '<div class="empty-state">Opening Weibo pages...</div>',
       feed_opening_xhs: '<div class="empty-state">Opening Xiaohongshu pages...</div>',
       feed_opening_substack: '<div class="empty-state">Opening Substack pages...</div>',
 
       empty_list_prefix: "No users in ",
-      empty_list_suffix: " list yet."
+      empty_list_suffix: " list yet.",
+      
+      msg_select_custom_list: "Please select a custom list to add generic links.",
+      msg_create_list_for_web: "Generic links cannot be added to system lists. Do you want to create a new custom list?"
     },
     zh: {
       greeting_hi: "你好",
@@ -136,8 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
       status_initializing_x: "正在初始化 X...",
       status_connecting_x: "正在连接 X...",
       status_opening_weibo: "正在打开页面...",
-      status_opening_xueqiu: "正在初始化雪球...",
-      status_connecting_xueqiu: "正在连接雪球...",
+      status_opening_xueqiu: "正在打开页面...",
       status_opening_xhs: "正在打开页面...",
       status_opening_substack: "正在打开页面...",
       status_done: "完成",
@@ -147,7 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
       input_placeholder: "输入 X / 微博 / 雪球 / Substack 用户名或链接",
       btn_add: "添加",
       label_following: "关注列表",
-      btn_clear_all: "清空",
+      btn_import: "导入",
+      btn_export: "导出",
       empty_list: "暂无用户",
       label_time_range: "时间范围:",
       option_24h: "过去 24 小时",
@@ -159,14 +182,14 @@ document.addEventListener('DOMContentLoaded', () => {
       msg_invalid_url: "无效的链接或用户名",
       msg_already_added: "已存在",
       msg_enter_alias: "请输入备注名 (留空则使用原始名称):",
-      msg_remove_all: "确定要移除此列表中的所有用户吗？",
       msg_no_active_users: "此列表中未选择任何用户。",
       
-      label_lists: "列表",
       btn_new_list: "+ 新建列表",
       msg_enter_list_name: "输入列表名称:",
       msg_delete_list: "删除列表 '{name}' 及其所有用户？",
       msg_rename_list: "重命名列表:",
+      msg_import_success: "导入成功！",
+      msg_import_error: "导入失败：文件格式无效",
 
       feed_empty_state: `
         暂无动态。<br><br>
@@ -180,6 +203,15 @@ document.addEventListener('DOMContentLoaded', () => {
             <p>已在新标签页打开 {count} 个微博页面。</p>
             <p style="font-size: 12px; color: #999; margin-top: 8px;">
                 (微博自动抓取暂时不可用)
+            </p>
+        </div>
+      `,
+
+      xueqiu_empty_state: `
+        <div class="empty-state">
+            <p>已在新标签页打开 {count} 个雪球页面。</p>
+            <p style="font-size: 12px; color: #999; margin-top: 8px;">
+                (雪球自动抓取暂时不可用)
             </p>
         </div>
       `,
@@ -203,13 +235,16 @@ document.addEventListener('DOMContentLoaded', () => {
       `,
       
       feed_loading_x: '<div class="loading-spinner">正在连接 X...</div>',
-      feed_loading_xueqiu: '<div class="loading-spinner">正在连接雪球...</div>',
+      feed_opening_xueqiu: '<div class="empty-state">正在打开雪球页面...</div>',
       feed_opening_weibo: '<div class="empty-state">正在打开微博页面...</div>',
       feed_opening_xhs: '<div class="empty-state">正在打开小红书页面...</div>',
       feed_opening_substack: '<div class="empty-state">正在打开 Substack 页面...</div>',
 
       empty_list_prefix: "暂无 ",
-      empty_list_suffix: " 列表用户。"
+      empty_list_suffix: " 列表用户。",
+      
+      msg_select_custom_list: "请先选择一个自定义列表以添加普通链接。",
+      msg_create_list_for_web: "无法添加链接到系统列表。是否创建一个新的自定义列表？"
     }
   };
 
@@ -226,6 +261,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Tabs init
     if (result.tabs && result.tabs.length > 0) {
         tabs = result.tabs;
+        // Ensure ALL tab exists
+        if (!tabs.some(t => t.id === 'all')) {
+            tabs.unshift({ id: 'all', name: 'All', type: 'system', platform: 'all' });
+        }
     } else {
         tabs = JSON.parse(JSON.stringify(DEFAULT_TABS));
         chrome.storage.local.set({ tabs: tabs });
@@ -236,15 +275,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabs.find(t => t.id === result.activeTab)) {
             activeTab = result.activeTab;
         } else {
-            activeTab = 'x';
+            activeTab = 'all';
         }
     } else {
-        activeTab = 'x';
+        activeTab = 'all';
+    }
+
+    // Force 'all' if we just added it and user might be lost
+    if (activeTab === 'x' && !tabs.find(t => t.id === 'x')) {
+        activeTab = 'all';
     }
     
     // Render Tabs
     renderTopTabs();
-    renderManageLists();
+    
+    // Ensure listSelect matches activeTab immediately
+    listSelect.value = activeTab;
 
     if (result.users) {
       let needsMigration = false;
@@ -258,9 +304,14 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           if (typeof u === 'object') {
-            const handle = typeof u.handle === 'string' ? u.handle : '';
+            // Robust handle extraction
+            let handle = '';
+            if (typeof u.handle === 'string') handle = u.handle;
+            else if (typeof u.username === 'string') handle = u.username;
+            else if (typeof u.id === 'string') handle = u.id; // Fallback
+            
             const enabled = typeof u.enabled === 'boolean' ? u.enabled : true;
-            const platform = typeof u.platform === 'string' ? u.platform : 'x';
+            let platform = typeof u.platform === 'string' ? u.platform : 'x';
             const alias = typeof u.alias === 'string' ? u.alias : '';
             let tabId = typeof u.tabId === 'string' ? u.tabId : '';
 
@@ -269,8 +320,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Migration: Assign tabId if missing
             if (!tabId) {
                 needsMigration = true;
-                tabId = platform; // Default to platform ID for system tabs
+                tabId = platform; 
             }
+            
+            // Fix platform if missing
+            if (!platform) platform = 'x';
             
             return { handle, enabled, platform, alias, tabId };
           }
@@ -279,9 +333,14 @@ document.addEventListener('DOMContentLoaded', () => {
         .filter(Boolean);
 
       users = migratedUsers;
-      if (needsMigration) chrome.storage.local.set({ users: users });
-      renderList();
+      if (needsMigration) chrome.storage.local.set({ users });
+    } else {
+        // If result.users is undefined, check if we have them in local storage under another key?
+        // No, standard key is 'users'.
+        // Maybe it's empty?
+        users = [];
     }
+    renderList();
     
     if (result.timeRange) timeRange.value = result.timeRange;
     if (result.includeReplies !== undefined) includeReplies.checked = result.includeReplies;
@@ -301,24 +360,100 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Event Listeners ---
 
   // Platform Tabs (Top Bar)
-  const topTabContainer = document.createElement('div');
-  topTabContainer.className = 'platform-tabs';
-  userList.parentNode.insertBefore(topTabContainer, userList); // Insert in settings view as per original design?
-  // Wait, original design inserted it into settingsView. But we want to use it to switch lists.
-  // The tabs should be persistent or visible. 
-  // For now, let's keep it where it was (inside Settings View) but also replicate or move it if needed.
-  // Actually, let's move it to the Header or top of Content so it's visible in both views?
-  // Current design: Tabs are ONLY in settings view. When in feed view, you can't switch tabs.
-  // This is acceptable.
+  // const topTabContainer = document.createElement('div');
+  // topTabContainer.className = 'platform-tabs';
+  // userList.parentNode.parentNode.insertBefore(topTabContainer, userList.parentNode); 
+  
+  // topTabContainer.addEventListener('click', (e) => { ... });
 
-  topTabContainer.addEventListener('click', (e) => {
-      const btn = e.target.closest('.tab-btn');
-      if (btn) {
-          activeTab = btn.dataset.tab;
-          renderTopTabs();
-          renderManageLists();
+  const listTitleWrapper = document.querySelector('.list-title-wrapper');
+  
+  // List Select Logic
+  listSelect.addEventListener('change', () => {
+      activeTab = listSelect.value;
+      chrome.storage.local.set({ activeTab: activeTab });
+      
+      // Actions visibility handled by hover now
+      renderList();
+  });
+
+  // Hover effect to show actions
+  listTitleWrapper.addEventListener('mouseenter', () => {
+      const tab = tabs.find(t => t.id === activeTab);
+      if (tab && tab.type === 'custom') {
+          editListBtn.classList.remove('hidden');
+          deleteListBtn.classList.remove('hidden');
+      }
+  });
+
+  listTitleWrapper.addEventListener('mouseleave', () => {
+      editListBtn.classList.add('hidden');
+      deleteListBtn.classList.add('hidden');
+  });
+  
+  // New List Button
+  newListBtn.addEventListener('click', createNewList);
+
+  function createNewList() {
+      const name = prompt(TRANSLATIONS[currentLang].msg_enter_list_name);
+      if (name && name.trim()) {
+          const id = 'custom_' + Date.now();
+          tabs.push({ id, name: name.trim(), type: 'custom', platform: 'mixed' });
+          chrome.storage.local.set({ tabs: tabs });
+          activeTab = id;
           chrome.storage.local.set({ activeTab: activeTab });
+          renderTopTabs();
           renderList();
+          
+          // Show actions for new list
+          listActions.classList.remove('hidden');
+      }
+  }
+
+  editListBtn.addEventListener('click', () => {
+       const tab = tabs.find(t => t.id === activeTab);
+       if (!tab || tab.type !== 'custom') return;
+       
+       const newName = prompt(TRANSLATIONS[currentLang].msg_rename_list, tab.name);
+       if (newName && newName.trim()) {
+           tab.name = newName.trim();
+           chrome.storage.local.set({ tabs: tabs });
+           renderTopTabs();
+           renderList();
+       }
+  });
+
+  deleteListBtn.addEventListener('click', () => {
+      const tab = tabs.find(t => t.id === activeTab);
+      if (!tab || tab.type !== 'custom') return;
+      
+      if (confirm(TRANSLATIONS[currentLang].msg_delete_list.replace('{name}', tab.name))) {
+          // Delete users
+          users = users.filter(u => u.tabId !== activeTab);
+          // Delete tab
+          tabs = tabs.filter(t => t.id !== activeTab);
+          
+          activeTab = 'all'; // Fallback to All
+          
+          chrome.storage.local.set({ tabs: tabs, users: users, activeTab: activeTab });
+          renderTopTabs();
+          renderList();
+      }
+  });
+
+  // User Input Validation
+  userInput.addEventListener('input', () => {
+      const val = userInput.value.trim();
+      if (!val) {
+          inputError.classList.add('hidden');
+          return;
+      }
+      const { username } = extractUser(val);
+      if (!username) {
+          inputError.textContent = TRANSLATIONS[currentLang].msg_invalid_url;
+          inputError.classList.remove('hidden');
+      } else {
+          inputError.classList.add('hidden');
       }
   });
 
@@ -354,6 +489,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Header Controls
+  // feedToggleBtn removed
+  
   settingsBtn.addEventListener('click', () => {
     if (settingsView.classList.contains('hidden')) {
       settingsView.classList.remove('hidden');
@@ -377,6 +514,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // Settings Logic
   addBtn.addEventListener('click', addUser);
   userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addUser(); });
+  
+  // List Menu Logic
+  listMenuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      listMenuDropdown.classList.toggle('hidden');
+  });
+
+  document.addEventListener('click', (e) => {
+      if (!listMenuBtn.contains(e.target) && !listMenuDropdown.contains(e.target)) {
+          listMenuDropdown.classList.add('hidden');
+      }
+  });
+
+  // Hide menu after clicking an item
+  listMenuDropdown.addEventListener('click', () => {
+      listMenuDropdown.classList.add('hidden');
+  });
   
   userList.addEventListener('click', (e) => {
     // Delete User
@@ -409,12 +563,62 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  clearBtn.addEventListener('click', () => {
-    if (confirm(TRANSLATIONS[currentLang].msg_remove_all)) {
-      // Only remove users in active tab
-      users = users.filter(u => u.tabId !== activeTab);
-      saveAndRender();
-    }
+  // Export
+  exportBtn.addEventListener('click', () => {
+    const data = {
+        users: users,
+        tabs: tabs,
+        version: "1.5",
+        exportedAt: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `x-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // Import
+  importBtn.addEventListener('click', () => importInput.click());
+
+  importInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const data = JSON.parse(event.target.result);
+            if (data.users && Array.isArray(data.users)) {
+                // Merge users
+                const existingKeys = new Set(users.map(u => `${u.handle}-${u.platform}-${u.tabId}`));
+                const newUsers = data.users.filter(u => !existingKeys.has(`${u.handle}-${u.platform}-${u.tabId}`));
+                
+                users = [...users, ...newUsers];
+                
+                // Merge tabs
+                if (data.tabs && Array.isArray(data.tabs)) {
+                    const existingTabIds = new Set(tabs.map(t => t.id));
+                    const newTabs = data.tabs.filter(t => t.type === 'custom' && !existingTabIds.has(t.id));
+                    tabs = [...tabs, ...newTabs];
+                }
+
+                chrome.storage.local.set({ users, tabs }, () => {
+                    alert(TRANSLATIONS[currentLang].msg_import_success);
+                    renderTopTabs();
+                    renderList();
+                });
+            } else {
+                throw new Error("Invalid Format");
+            }
+        } catch (err) {
+            alert(TRANSLATIONS[currentLang].msg_import_error);
+        }
+        importInput.value = ''; // Reset
+    };
+    reader.readAsText(file);
   });
 
   timeRange.addEventListener('change', () => chrome.storage.local.set({ timeRange: timeRange.value }));
@@ -427,98 +631,23 @@ document.addEventListener('DOMContentLoaded', () => {
     startFetching();
   });
 
-  // List Management Events
-  newListBtn.addEventListener('click', () => {
-      const name = prompt(TRANSLATIONS[currentLang].msg_enter_list_name);
-      if (name && name.trim()) {
-          const id = 'custom_' + Date.now();
-          tabs.push({ id, name: name.trim(), type: 'custom', platform: 'mixed' });
-          chrome.storage.local.set({ tabs: tabs });
-          activeTab = id;
-          chrome.storage.local.set({ activeTab: activeTab });
-          renderTopTabs();
-          renderManageLists();
-          renderList();
-      }
-  });
-
-  tabsListContainer.addEventListener('click', (e) => {
-      // Select Tab
-      const chip = e.target.closest('.tab-chip');
-      if (!chip) return;
-      
-      // If clicking action button, handle that instead
-      if (e.target.closest('.delete-list-btn')) {
-          const tabId = chip.dataset.tab;
-          const tab = tabs.find(t => t.id === tabId);
-          if (confirm(TRANSLATIONS[currentLang].msg_delete_list.replace('{name}', tab.name))) {
-              // Delete users
-              users = users.filter(u => u.tabId !== tabId);
-              // Delete tab
-              tabs = tabs.filter(t => t.id !== tabId);
-              
-              if (activeTab === tabId) activeTab = 'x'; // Fallback
-              
-              chrome.storage.local.set({ tabs: tabs, users: users, activeTab: activeTab });
-              renderTopTabs();
-              renderManageLists();
-              renderList();
-          }
-          return;
-      }
-      
-      if (e.target.closest('.rename-list-btn')) { // Rename
-           const tabId = chip.dataset.tab;
-           const tab = tabs.find(t => t.id === tabId);
-           const newName = prompt(TRANSLATIONS[currentLang].msg_rename_list, tab.name);
-           if (newName && newName.trim()) {
-               tab.name = newName.trim();
-               chrome.storage.local.set({ tabs: tabs });
-               renderTopTabs();
-               renderManageLists();
-           }
-           return;
-      }
-
-      // Select logic
-      activeTab = chip.dataset.tab;
-      renderTopTabs();
-      renderManageLists();
-      chrome.storage.local.set({ activeTab: activeTab });
-      renderList();
-  });
-
   // --- Functions ---
 
   function renderTopTabs() {
-      topTabContainer.innerHTML = '';
+      // topTabContainer.innerHTML = ''; // Removed
+      // Update Select Options
+      listSelect.innerHTML = '';
+      
       tabs.forEach(tab => {
-          const btn = document.createElement('button');
-          btn.className = `tab-btn ${tab.id === activeTab ? 'active' : ''}`;
-          btn.dataset.tab = tab.id;
-          btn.textContent = tab.name;
-          topTabContainer.appendChild(btn);
+          const option = document.createElement('option');
+          option.value = tab.id;
+          option.textContent = tab.name;
+          if (tab.id === activeTab) option.selected = true;
+          listSelect.appendChild(option);
       });
   }
 
-  function renderManageLists() {
-      tabsListContainer.innerHTML = '';
-      tabs.forEach(tab => {
-          const chip = document.createElement('div');
-          chip.className = `tab-chip ${tab.id === activeTab ? 'active' : ''}`;
-          chip.dataset.tab = tab.id;
-          
-          let actions = '';
-          // Allow renaming all tabs. Allow deleting only custom tabs.
-          const editBtn = `<div class="tab-action-btn rename-list-btn" title="Rename">✎</div>`;
-          const deleteBtn = tab.type === 'custom' ? `<div class="tab-action-btn delete-list-btn" title="Delete">×</div>` : '';
-          
-          actions = `<div class="tab-chip-actions">${editBtn}${deleteBtn}</div>`;
-          
-          chip.innerHTML = `<span>${tab.name}</span>${actions}`;
-          tabsListContainer.appendChild(chip);
-      });
-  }
+  // function renderManageLists() { ... } // Removed
 
   function addUser() {
     const input = userInput.value.trim();
@@ -530,16 +659,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentTab = tabs.find(t => t.id === activeTab);
     let targetTabId = activeTab;
 
-    if (currentTab.type === 'system') {
-        // In system tab mode, users are forced to their platform's system tab
-        // to maintain the "All Users" behavior of system tabs.
-        // E.g. Adding Weibo user while in 'x' tab -> goes to 'weibo' tab.
-        // Find system tab for this platform
+    if (activeTab === 'all') {
+        // If in All tab, add to platform system tab
         const systemTab = tabs.find(t => t.type === 'system' && t.platform === platform);
+        if (platform === 'web' && !systemTab) {
+             if (confirm(TRANSLATIONS[currentLang].msg_create_list_for_web)) {
+                 createNewList();
+             }
+             return;
+        }
+        targetTabId = systemTab ? systemTab.id : 'x';
+    } else if (currentTab.type === 'system') {
+        // In system tab mode, users are forced to their platform's system tab
+        const systemTab = tabs.find(t => t.type === 'system' && t.platform === platform);
+        
+        if (platform === 'web' && !systemTab) {
+             if (confirm(TRANSLATIONS[currentLang].msg_create_list_for_web)) {
+                 createNewList();
+             }
+             return;
+        }
+
         if (systemTab) {
             targetTabId = systemTab.id;
         } else {
-            // Fallback (shouldn't happen for supported platforms)
             targetTabId = 'x';
         }
     } else {
@@ -555,15 +698,17 @@ document.addEventListener('DOMContentLoaded', () => {
     users.push({ handle: username, enabled: true, platform: platform, alias: '', tabId: targetTabId });
     saveAndRender();
     userInput.value = '';
+    inputError.classList.add('hidden');
     
     // Feedback if added to a different tab
-    if (targetTabId !== activeTab) {
-        // Maybe switch tab? Or just alert?
-        // Let's just switch to it so user sees it.
+    if (targetTabId !== activeTab && activeTab !== 'all') {
+        // Optional: Switch to that tab? Or stay?
+        // User might be confused if they add someone and don't see them.
+        // But if they are in 'Weibo' tab and add an 'X' user, it goes to 'X' tab.
+        // Let's switch if not in All.
         activeTab = targetTabId;
         chrome.storage.local.set({ activeTab: activeTab });
         renderTopTabs();
-        renderManageLists();
         renderList();
     }
   }
@@ -645,6 +790,17 @@ document.addEventListener('DOMContentLoaded', () => {
        } else if (/[\u4e00-\u9fa5]/.test(input)) {
           platform = 'xueqiu';
           username = input;
+       } else if (input.startsWith('http://') || input.startsWith('https://')) {
+          platform = 'web';
+          username = input;
+       } else if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\/.*)?$/.test(input)) {
+          // Detect domain-like strings without protocol (e.g. "google.com", "example.org/page")
+          // but exclude simple usernames (which usually don't have dots, or if they do, we might need to be careful)
+          // X usernames can only contain letters, numbers, and underscores, no dots.
+          // So if it has a dot, it's likely a website or another platform (unless it's a specific pattern).
+          // Actually X usernames CANNOT have dots. So if there is a dot, it is NOT an X username.
+          platform = 'web';
+          username = 'https://' + input;
        } else {
           platform = 'x';
           username = input;
@@ -663,13 +819,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderList() {
     userList.innerHTML = '';
-    const filteredUsers = users.filter(u => u.tabId === activeTab);
+    
+    // Update Select Value (in case activeTab changed externally)
+    listSelect.value = activeTab;
+    
+    // Ensure actions are hidden initially
+    editListBtn.classList.add('hidden');
+    deleteListBtn.classList.add('hidden');
+
+    let filteredUsers = [];
+    if (activeTab === 'all') {
+        filteredUsers = users;
+    } else {
+        filteredUsers = users.filter(u => u.tabId === activeTab);
+    }
+
+    const listCount = document.createElement('span');
+    listCount.className = 'list-count';
+    // listCount.textContent = `(${filteredUsers.length})`;
+    
+    // We don't have a place to show count in the new UI header, so we skip rendering it to DOM or append it somewhere if needed.
+    // If user wants count, we can append it to listSelect options or title?
+    // For now, let's just not crash.
+    // listCount.textContent = `(${filteredUsers.length})`;
 
     if (filteredUsers.length === 0) {
       emptyStateList.classList.remove('hidden');
-      const currentTab = tabs.find(t => t.id === activeTab);
       const tabName = currentTab ? currentTab.name : 'Unknown';
-      emptyStateList.textContent = TRANSLATIONS[currentLang].empty_list_prefix + tabName + TRANSLATIONS[currentLang].empty_list_suffix;
+      if (activeTab === 'all') {
+         emptyStateList.textContent = TRANSLATIONS[currentLang].empty_list;
+      } else {
+         emptyStateList.textContent = TRANSLATIONS[currentLang].empty_list_prefix + tabName + TRANSLATIONS[currentLang].empty_list_suffix;
+      }
     } else {
       emptyStateList.classList.add('hidden');
       filteredUsers.forEach((user) => {
@@ -678,9 +859,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const li = document.createElement('li');
         li.className = 'user-item';
-        
-        // Show platform icon or label if in mixed list?
-        // For now, simple text.
         
         li.innerHTML = `
           <div class="user-item-left">
@@ -698,15 +876,18 @@ document.addEventListener('DOMContentLoaded', () => {
         userList.appendChild(li);
       });
     }
-    countSpan.textContent = filteredUsers.length;
   }
 
   function startFetching() {
     // Get users in active tab
-    const targetUsers = users.filter(u => u.enabled && u.tabId === activeTab);
+    let targetUsers = [];
+    if (activeTab === 'all') {
+        targetUsers = users.filter(u => u.enabled);
+    } else {
+        targetUsers = users.filter(u => u.enabled && u.tabId === activeTab);
+    }
 
     if (targetUsers.length === 0) { 
-      const currentTab = tabs.find(t => t.id === activeTab);
       tweetsContainer.innerHTML = `<div class="empty-state">${TRANSLATIONS[currentLang].msg_no_active_users}</div>`;
       return; 
     }
@@ -739,14 +920,19 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchSubstack(groups.substack, true);
         openedTabsCount += groups.substack.length;
     }
+    if (groups.xueqiu && groups.xueqiu.length > 0) {
+        fetchXueqiu(groups.xueqiu, true);
+        openedTabsCount += groups.xueqiu.length;
+    }
+    if (groups.web && groups.web.length > 0) {
+        fetchWeb(groups.web, true);
+        openedTabsCount += groups.web.length;
+    }
 
     // 2. Load Feed (Primary Content)
     // Prioritize X, then Xueqiu
     if (groups.x && groups.x.length > 0) {
         fetchX(groups.x);
-        handledFeed = true;
-    } else if (groups.xueqiu && groups.xueqiu.length > 0) {
-        fetchXueqiu(groups.xueqiu);
         handledFeed = true;
     }
     
@@ -805,24 +991,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function fetchXueqiu(handles) {
-    currentFetchPlatform = 'xueqiu';
-    tweetsContainer.innerHTML = TRANSLATIONS[currentLang].feed_loading_xueqiu;
-    statusText.textContent = TRANSLATIONS[currentLang].status_initializing_xueqiu;
+  function fetchXueqiu(handles, silent = false) {
+    if (!silent) {
+        currentFetchPlatform = 'xueqiu';
+        tweetsContainer.innerHTML = TRANSLATIONS[currentLang].feed_opening_xueqiu;
+        statusText.textContent = TRANSLATIONS[currentLang].status_opening_xueqiu;
+    }
 
-    const urls = handles.map(target => {
+    let count = 0;
+    handles.forEach(target => {
+        let url;
         if (/^\d+$/.test(target)) {
-            return `https://xueqiu.com/u/${target}`;
+            url = `https://xueqiu.com/u/${target}`;
         } else {
-            return `https://xueqiu.com/u/${encodeURIComponent(target)}`;
+            url = `https://xueqiu.com/u/${encodeURIComponent(target)}`;
         }
+        chrome.tabs.create({ url: url, active: false });
+        count++;
     });
 
-    chrome.storage.local.remove(['cachedTweets', 'fetchStatus'], () => {
-      chrome.runtime.sendMessage({ action: "START_BATCH_FETCH", urls: urls }, (response) => {
-        startPolling();
-      });
-    });
+    if (!silent) {
+        tweetsContainer.innerHTML = TRANSLATIONS[currentLang].xueqiu_empty_state.replace('{count}', count).replace('{s}', count > 1 ? 's' : '');
+        statusText.textContent = TRANSLATIONS[currentLang].status_done;
+    }
   }
 
   function fetchXiaohongshu(handles, silent = false) {
@@ -873,6 +1064,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!silent) {
         tweetsContainer.innerHTML = TRANSLATIONS[currentLang].substack_empty_state.replace('{count}', count).replace('{s}', count > 1 ? 's' : '');
+        statusText.textContent = TRANSLATIONS[currentLang].status_done;
+    }
+  }
+
+  function fetchWeb(handles, silent = false) {
+    if (!silent) {
+        currentFetchPlatform = 'web';
+        tweetsContainer.innerHTML = '<div class="empty-state">Opening links...</div>';
+        statusText.textContent = 'Opening pages...';
+    }
+
+    let count = 0;
+    handles.forEach(url => {
+        chrome.tabs.create({ url: url, active: false });
+        count++;
+    });
+
+    if (!silent) {
+        tweetsContainer.innerHTML = `<div class="empty-state">Opened ${count} link${count > 1 ? 's' : ''} in new tabs.</div>`;
         statusText.textContent = TRANSLATIONS[currentLang].status_done;
     }
   }

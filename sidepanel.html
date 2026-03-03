@@ -53,26 +53,41 @@
       <!-- Settings View -->
       <div id="settingsView" class="view-section hidden">
         
-        <!-- List Management -->
-        <div class="list-management" style="margin-bottom: 15px;">
+        <!-- List Management (Removed as per user request) -->
+        <!-- <div class="list-management" style="margin-bottom: 15px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 14px; font-weight: 600;" data-i18n="label_lists">Lists</span>
                 <button id="newListBtn" class="text-btn" data-i18n="btn_new_list">+ New List</button>
             </div>
-            <div id="tabsList" class="tabs-list">
-                <!-- Tabs will be rendered here (replacing old tabContainer) -->
-            </div>
-        </div>
+            <div id="tabsList" class="tabs-list"></div>
+        </div> -->
 
-        <div class="input-group">
-          <input type="text" id="userInput" placeholder="X / Weibo / Xueqiu username or URL" data-i18n-placeholder="input_placeholder" />
-          <button id="addBtn" class="primary-btn" data-i18n="btn_add">Add</button>
+        <div class="input-group-container">
+          <div class="input-group">
+            <input type="text" id="userInput" placeholder="X / Weibo / Xueqiu username or URL" data-i18n-placeholder="input_placeholder" />
+            <button id="addBtn" class="primary-btn" data-i18n="btn_add">Add</button>
+          </div>
+          <div id="inputError" class="input-error hidden">Invalid format</div>
         </div>
 
         <div class="list-container">
           <div class="list-header">
-            <span><span data-i18n="label_following">Following</span> (<span id="count">0</span>)</span>
-            <button id="clearBtn" class="text-btn" data-i18n="btn_clear_all">Clear All</button>
+            <div class="list-title-wrapper">
+                <select id="listSelect" class="list-select">
+                    <!-- Options will be populated by JS -->
+                </select>
+                <button id="editListBtn" class="action-icon-btn hidden" title="Rename">✎</button>
+                <button id="deleteListBtn" class="action-icon-btn delete hidden" title="Delete">×</button>
+            </div>
+            <div class="list-actions-container">
+                <button id="listMenuBtn" class="action-icon-btn" title="More">⋮</button>
+                <div id="listMenuDropdown" class="list-menu-dropdown hidden">
+                    <button id="newListBtn" class="menu-item" data-i18n="btn_new_list">+ New List</button>
+                    <button id="importBtn" class="menu-item" data-i18n="btn_import">Import</button>
+                    <button id="exportBtn" class="menu-item" data-i18n="btn_export">Export</button>
+                </div>
+                <input type="file" id="importInput" accept=".json" style="display:none;" />
+            </div>
           </div>
           <ul id="userList">
             <!-- Users will be added here -->

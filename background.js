@@ -162,9 +162,9 @@ async function performScrape(searchUrl) {
         throw err;
     } finally {
         // Ensure tab is closed
-        if (tabId) {
-            try { chrome.tabs.remove(tabId); } catch(e) {}
-        }
+        // if (tabId) {
+        //    try { chrome.tabs.remove(tabId); } catch(e) {}
+        // }
     }
 }
 
