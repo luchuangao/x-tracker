@@ -21,12 +21,7 @@
         <button class="xt-btn" id="xt-lang-toggle" type="button" title="Switch Language" aria-label="Switch Language">
           <span class="xt-btn-text" style="font-size: 14px; font-weight: 600;">EN</span>
         </button>
-        <button class="xt-btn" id="xt-settings-toggle" type="button" title="Settings" aria-label="Settings">
-          <svg class="xt-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M19.4 15a8.4 8.4 0 0 0 .1-1 8.4 8.4 0 0 0-.1-1l2-1.6a.7.7 0 0 0 .2-.9l-1.9-3.3a.7.7 0 0 0-.8-.3l-2.3.9a7.7 7.7 0 0 0-1.7-1l-.3-2.4a.7.7 0 0 0-.7-.6H9.9a.7.7 0 0 0-.7.6l-.3 2.4a7.7 7.7 0 0 0-1.7 1l-2.3-.9a.7.7 0 0 0-.8.3L2.2 10.5a.7.7 0 0 0 .2.9l2 1.6a8.4 8.4 0 0 0-.1 1 8.4 8.4 0 0 0 .1 1l-2 1.6a.7.7 0 0 0-.2.9l1.9 3.3a.7.7 0 0 0 .8.3l2.3-.9a7.7 7.7 0 0 0 1.7 1l.3 2.4c.1.4.4.6.7.6h4.2c.4 0 .6-.2.7-.6l.3-2.4a7.7 7.7 0 0 0 1.7-1l2.3.9a.7.7 0 0 0 .8-.3l1.9-3.3a.7.7 0 0 0-.2-.9l-2-1.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+        <!-- Settings Toggle Removed -->
         <button class="xt-btn" id="xt-refresh" type="button" title="Reload" aria-label="Reload">
           <svg class="xt-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M20 12a8 8 0 1 1-2.3-5.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -36,22 +31,27 @@
       </div>
     </div>
     
+    <div class="xt-nav-tabs">
+        <button id="nav-feed" class="nav-tab-btn active" data-i18n="nav_feed">Feed</button>
+        <button id="nav-lists" class="nav-tab-btn" data-i18n="nav_lists">Lists</button>
+    </div>
+    
     <div class="xt-content" id="xt-content">
       <!-- Feed View -->
       <div id="feedView" class="view-section">
-        <div id="statusText" class="status-text" data-i18n="status_ready">Ready</div>
-        <div id="tweetsContainer">
+        <div id="feedContainer">
+            <!-- Feed Items will be injected here -->
             <div class="empty-state">
-              No tweets loaded.<br><br>
-              1. Click <b>Settings (⚙️)</b> to add users.<br>
-              2. Ensure users are <b>checked</b> (✅).<br>
-              3. Click <b>Fetch & Show Tweets</b>.
+              No sources to check.<br><br>
+              1. Go to <b>Lists</b> tab.<br>
+              2. Add users/links.<br>
+              3. Come back here to track them.
             </div>
         </div>
       </div>
 
-      <!-- Settings View -->
-      <div id="settingsView" class="view-section hidden">
+      <!-- Lists View (formerly Settings View) -->
+      <div id="listsView" class="view-section hidden">
         
         <!-- List Management (Removed as per user request) -->
         <!-- <div class="list-management" style="margin-bottom: 15px;">

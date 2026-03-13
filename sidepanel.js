@@ -4,24 +4,24 @@
 document.addEventListener('DOMContentLoaded', () => {
   // Elements
   const refreshBtn = document.getElementById('xt-refresh');
-  const settingsBtn = document.getElementById('xt-settings-toggle');
   const langToggleBtn = document.getElementById('xt-lang-toggle');
+  
+  // Navigation Tabs
+  const navFeedBtn = document.getElementById('nav-feed');
+  const navListsBtn = document.getElementById('nav-lists');
   
   // Views
   const feedView = document.getElementById('feedView');
-  const settingsView = document.getElementById('settingsView');
-  // const feedToggleBtn = document.getElementById('xt-feed-toggle'); // Removed
+  const listsView = document.getElementById('listsView'); 
   
   // Feed Elements
-  const tweetsContainer = document.getElementById('tweetsContainer');
-  const statusText = document.getElementById('statusText');
+  const feedContainer = document.getElementById('feedContainer');
 
-  // Settings Elements
+  // Lists Elements
   const userInput = document.getElementById('userInput');
   const addBtn = document.getElementById('addBtn');
   const userList = document.getElementById('userList');
   const listSelect = document.getElementById('listSelect');
-  const listActions = document.getElementById('listActions');
   const editListBtn = document.getElementById('editListBtn');
   const deleteListBtn = document.getElementById('deleteListBtn');
   const listMenuBtn = document.getElementById('listMenuBtn');
@@ -36,18 +36,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const includeReplies = document.getElementById('includeReplies');
   const fetchBtn = document.getElementById('fetchBtn');
   
-  // List Management Elements (Old ones commented out in HTML, but logic was here)
-  // const newListBtn = document.getElementById('newListBtn'); // We might need to add this back to Top Tabs
-  // const tabsListContainer = document.getElementById('tabsList');
-
   // State
   let users = [];
   let tabs = [];
-  let statusPoll = null;
-  let currentFetchPlatform = 'x';
-  let activeTab = 'all'; // Default to ALL
+  let activeTab = 'all'; // For List View
   let currentLang = 'en';
-
+  
   const DEFAULT_TABS = [
     { id: 'all', name: 'All', type: 'system', platform: 'all' },
     { id: 'x', name: 'X', type: 'system', platform: 'x' },
@@ -62,19 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
       greeting_hi: "Hi",
       greeting_subtitle: "It’s a new day.",
       status_ready: "Ready",
-      status_initializing_x: "Initializing X...",
-      status_connecting_x: "Connecting to X...",
-      status_opening_weibo: "Opening pages...",
-      status_opening_xueqiu: "Opening pages...",
-      status_opening_xhs: "Opening pages...",
-      status_opening_substack: "Opening pages...",
       status_done: "Done",
-      status_updated: "Updated: {time}",
-      status_last_updated: "Last updated: {time}",
+      
+      nav_feed: "Feed",
+      nav_lists: "Lists",
       
       input_placeholder: "X / Weibo / Xueqiu / Substack username or URL",
       btn_add: "Add",
-      label_following: "Following",
       btn_import: "Import",
       btn_export: "Export",
       empty_list: "No users added yet.",
@@ -83,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
       option_3d: "Last 3 Days",
       option_1w: "Last Week",
       label_include_replies: "Include Replies",
-      btn_fetch: "Fetch & Show Tweets",
+      btn_fetch: "Open Selected",
       
       msg_invalid_url: "Invalid URL/Username",
       msg_already_added: "Already added",
@@ -98,53 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
       msg_import_error: "Import failed: Invalid file format",
 
       feed_empty_state: `
-        No tweets loaded.<br><br>
-        1. Click <b>Settings (⚙️)</b> to add users.<br>
-        2. Ensure users are <b>checked</b> (✅).<br>
-        3. Click <b>Fetch & Show Tweets</b>.
+        <div class="empty-state-icon">📝</div>
+        <div class="empty-state-text">No sources to check.</div>
+        <div class="empty-state-subtext">Add users in <b>Lists</b> tab to start tracking.</div>
       `,
       
-      weibo_empty_state: `
-        <div class="empty-state">
-            <p>Opened {count} Weibo page{s} in new tabs.</p>
-            <p style="font-size: 12px; color: #999; margin-top: 8px;">
-                (Weibo automated scraping is temporarily disabled)
-            </p>
-        </div>
-      `,
-
-      xueqiu_empty_state: `
-        <div class="empty-state">
-            <p>Opened {count} Xueqiu page{s} in new tabs.</p>
-            <p style="font-size: 12px; color: #999; margin-top: 8px;">
-                (Xueqiu automated scraping is temporarily disabled)
-            </p>
-        </div>
-      `,
-      
-      xhs_empty_state: `
-        <div class="empty-state">
-            <p>Opened {count} Xiaohongshu page{s} in new tabs.</p>
-            <p style="font-size: 12px; color: #999; margin-top: 8px;">
-                (Xiaohongshu automated scraping is not supported yet)
-            </p>
-        </div>
-      `,
-      
-      substack_empty_state: `
-        <div class="empty-state">
-            <p>Opened {count} Substack page{s} in new tabs.</p>
-            <p style="font-size: 12px; color: #999; margin-top: 8px;">
-                (Substack automated scraping is not supported yet)
-            </p>
-        </div>
-      `,
-      
-      feed_loading_x: '<div class="loading-spinner">Connecting to X...</div>',
-      feed_opening_xueqiu: '<div class="empty-state">Opening Xueqiu pages...</div>',
-      feed_opening_weibo: '<div class="empty-state">Opening Weibo pages...</div>',
-      feed_opening_xhs: '<div class="empty-state">Opening Xiaohongshu pages...</div>',
-      feed_opening_substack: '<div class="empty-state">Opening Substack pages...</div>',
+      msg_added_feed_tip: "Added! Check the Feed tab.",
 
       empty_list_prefix: "No users in ",
       empty_list_suffix: " list yet.",
@@ -156,19 +103,13 @@ document.addEventListener('DOMContentLoaded', () => {
       greeting_hi: "你好",
       greeting_subtitle: "新的一天开始了。",
       status_ready: "就绪",
-      status_initializing_x: "正在初始化 X...",
-      status_connecting_x: "正在连接 X...",
-      status_opening_weibo: "正在打开页面...",
-      status_opening_xueqiu: "正在打开页面...",
-      status_opening_xhs: "正在打开页面...",
-      status_opening_substack: "正在打开页面...",
       status_done: "完成",
-      status_updated: "更新于: {time}",
-      status_last_updated: "上次更新: {time}",
+      
+      nav_feed: "动态",
+      nav_lists: "列表",
       
       input_placeholder: "输入 X / 微博 / 雪球 / Substack 用户名或链接",
       btn_add: "添加",
-      label_following: "关注列表",
       btn_import: "导入",
       btn_export: "导出",
       empty_list: "暂无用户",
@@ -177,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
       option_3d: "过去 3 天",
       option_1w: "过去 1 周",
       label_include_replies: "包含回复",
-      btn_fetch: "获取并显示动态",
+      btn_fetch: "打开选中项",
       
       msg_invalid_url: "无效的链接或用户名",
       msg_already_added: "已存在",
@@ -192,53 +133,12 @@ document.addEventListener('DOMContentLoaded', () => {
       msg_import_error: "导入失败：文件格式无效",
 
       feed_empty_state: `
-        暂无动态。<br><br>
-        1. 点击 <b>设置 (⚙️)</b> 添加用户。<br>
-        2. 确保用户已被 <b>勾选</b> (✅)。<br>
-        3. 点击 <b>获取并显示动态</b>。
+        <div class="empty-state-icon">📝</div>
+        <div class="empty-state-text">暂无动态源</div>
+        <div class="empty-state-subtext">前往 <b>列表</b> 标签页添加关注对象。</div>
       `,
       
-      weibo_empty_state: `
-        <div class="empty-state">
-            <p>已在新标签页打开 {count} 个微博页面。</p>
-            <p style="font-size: 12px; color: #999; margin-top: 8px;">
-                (微博自动抓取暂时不可用)
-            </p>
-        </div>
-      `,
-
-      xueqiu_empty_state: `
-        <div class="empty-state">
-            <p>已在新标签页打开 {count} 个雪球页面。</p>
-            <p style="font-size: 12px; color: #999; margin-top: 8px;">
-                (雪球自动抓取暂时不可用)
-            </p>
-        </div>
-      `,
-      
-      xhs_empty_state: `
-        <div class="empty-state">
-            <p>已在新标签页打开 {count} 个小红书页面。</p>
-            <p style="font-size: 12px; color: #999; margin-top: 8px;">
-                (小红书自动抓取暂不支持)
-            </p>
-        </div>
-      `,
-      
-      substack_empty_state: `
-        <div class="empty-state">
-            <p>已在新标签页打开 {count} 个 Substack 页面。</p>
-            <p style="font-size: 12px; color: #999; margin-top: 8px;">
-                (Substack 自动抓取暂不支持)
-            </p>
-        </div>
-      `,
-      
-      feed_loading_x: '<div class="loading-spinner">正在连接 X...</div>',
-      feed_opening_xueqiu: '<div class="empty-state">正在打开雪球页面...</div>',
-      feed_opening_weibo: '<div class="empty-state">正在打开微博页面...</div>',
-      feed_opening_xhs: '<div class="empty-state">正在打开小红书页面...</div>',
-      feed_opening_substack: '<div class="empty-state">正在打开 Substack 页面...</div>',
+      msg_added_feed_tip: "已添加！请前往动态页面查看。",
 
       empty_list_prefix: "暂无 ",
       empty_list_suffix: " 列表用户。",
@@ -251,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Initialization ---
   
   // Load initial state
-  chrome.storage.local.get(['users', 'tabs', 'timeRange', 'includeReplies', 'cachedTweets', 'fetchStatus', 'activeTab', 'lang'], (result) => {
+  chrome.storage.local.get(['users', 'tabs', 'timeRange', 'includeReplies', 'activeTab', 'lang'], (result) => {
     // Language init
     if (result.lang) {
       currentLang = result.lang;
@@ -261,7 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Tabs init
     if (result.tabs && result.tabs.length > 0) {
         tabs = result.tabs;
-        // Ensure ALL tab exists
         if (!tabs.some(t => t.id === 'all')) {
             tabs.unshift({ id: 'all', name: 'All', type: 'system', platform: 'all' });
         }
@@ -271,7 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (result.activeTab) {
-        // Verify activeTab exists
         if (tabs.find(t => t.id === result.activeTab)) {
             activeTab = result.activeTab;
         } else {
@@ -281,15 +179,12 @@ document.addEventListener('DOMContentLoaded', () => {
         activeTab = 'all';
     }
 
-    // Force 'all' if we just added it and user might be lost
     if (activeTab === 'x' && !tabs.find(t => t.id === 'x')) {
         activeTab = 'all';
     }
     
-    // Render Tabs
+    // Render List UI
     renderTopTabs();
-    
-    // Ensure listSelect matches activeTab immediately
     listSelect.value = activeTab;
 
     if (result.users) {
@@ -297,36 +192,35 @@ document.addEventListener('DOMContentLoaded', () => {
       const migratedUsers = result.users
         .filter(Boolean)
         .map((u) => {
-          // V1 -> V2 Migration
+          // Migration Logic
           if (typeof u === 'string') {
             needsMigration = true;
-            return { handle: u, enabled: true, platform: 'x', alias: '', tabId: 'x' };
+            return { handle: u, enabled: true, platform: 'x', alias: '', tabId: 'x', lastRead: Date.now() };
           }
 
           if (typeof u === 'object') {
-            // Robust handle extraction
-            let handle = '';
-            if (typeof u.handle === 'string') handle = u.handle;
-            else if (typeof u.username === 'string') handle = u.username;
-            else if (typeof u.id === 'string') handle = u.id; // Fallback
-            
+            let handle = u.handle || u.username || u.id || '';
             const enabled = typeof u.enabled === 'boolean' ? u.enabled : true;
-            let platform = typeof u.platform === 'string' ? u.platform : 'x';
-            const alias = typeof u.alias === 'string' ? u.alias : '';
-            let tabId = typeof u.tabId === 'string' ? u.tabId : '';
+            let platform = u.platform || 'x';
+            const alias = u.alias || '';
+            let tabId = u.tabId || '';
+            let lastRead = u.lastRead || 0; 
+            
+            if (u.lastRead === undefined) {
+                lastRead = Date.now();
+                needsMigration = true;
+            }
 
             if (!handle) { needsMigration = true; return null; }
 
-            // Migration: Assign tabId if missing
             if (!tabId) {
                 needsMigration = true;
                 tabId = platform; 
             }
             
-            // Fix platform if missing
             if (!platform) platform = 'x';
             
-            return { handle, enabled, platform, alias, tabId };
+            return { handle, enabled, platform, alias, tabId, lastRead };
           }
           return null;
         })
@@ -335,36 +229,41 @@ document.addEventListener('DOMContentLoaded', () => {
       users = migratedUsers;
       if (needsMigration) chrome.storage.local.set({ users });
     } else {
-        // If result.users is undefined, check if we have them in local storage under another key?
-        // No, standard key is 'users'.
-        // Maybe it's empty?
         users = [];
     }
-    renderList();
+    
+    renderList(); // Render Management List
+    renderFeed(); // Render Feed
     
     if (result.timeRange) timeRange.value = result.timeRange;
     if (result.includeReplies !== undefined) includeReplies.checked = result.includeReplies;
-    
-    // Check cache
-    if (result.cachedTweets && result.cachedTweets.length > 0) {
-      renderTweets(result.cachedTweets);
-      statusText.textContent = TRANSLATIONS[currentLang].status_last_updated.replace('{time}', new Date(result.fetchStatus?.lastUpdated || Date.now()).toLocaleTimeString());
-    }
-    
-    // Resume polling if needed
-    if (result.fetchStatus && (Date.now() - result.fetchStatus.lastUpdated < 30000) && result.fetchStatus.state !== 'success' && result.fetchStatus.state !== 'error') {
-       startPolling();
-    }
   });
 
   // --- Event Listeners ---
 
-  // Platform Tabs (Top Bar)
-  // const topTabContainer = document.createElement('div');
-  // topTabContainer.className = 'platform-tabs';
-  // userList.parentNode.parentNode.insertBefore(topTabContainer, userList.parentNode); 
+  // Navigation
+  navFeedBtn.addEventListener('click', () => {
+      switchView('feed');
+  });
   
-  // topTabContainer.addEventListener('click', (e) => { ... });
+  navListsBtn.addEventListener('click', () => {
+      switchView('lists');
+  });
+  
+  function switchView(view) {
+      if (view === 'feed') {
+          navFeedBtn.classList.add('active');
+          navListsBtn.classList.remove('active');
+          feedView.classList.remove('hidden');
+          listsView.classList.add('hidden');
+          renderFeed(); // Refresh feed
+      } else {
+          navFeedBtn.classList.remove('active');
+          navListsBtn.classList.add('active');
+          feedView.classList.add('hidden');
+          listsView.classList.remove('hidden');
+      }
+  }
 
   const listTitleWrapper = document.querySelector('.list-title-wrapper');
   
@@ -372,8 +271,6 @@ document.addEventListener('DOMContentLoaded', () => {
   listSelect.addEventListener('change', () => {
       activeTab = listSelect.value;
       chrome.storage.local.set({ activeTab: activeTab });
-      
-      // Actions visibility handled by hover now
       renderList();
   });
 
@@ -404,9 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
           chrome.storage.local.set({ activeTab: activeTab });
           renderTopTabs();
           renderList();
-          
-          // Show actions for new list
-          listActions.classList.remove('hidden');
       }
   }
 
@@ -462,8 +356,9 @@ document.addEventListener('DOMContentLoaded', () => {
     currentLang = currentLang === 'en' ? 'zh' : 'en';
     chrome.storage.local.set({ lang: currentLang });
     updateLanguageUI();
-    renderTopTabs(); // Re-render to update names if needed (though names are user-defined mostly)
+    renderTopTabs();
     renderList();
+    renderFeed();
   });
 
   function updateLanguageUI() {
@@ -476,39 +371,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.dataset.i18n;
       if (t[key]) el.textContent = t[key];
+      // Keep active class logic separate
     });
 
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
       const key = el.dataset.i18nPlaceholder;
       if (t[key]) el.placeholder = t[key];
     });
-
-    if (statusText.textContent === 'Ready' || statusText.textContent === '就绪') {
-        statusText.textContent = t.status_ready;
-    }
   }
 
-  // Header Controls
-  // feedToggleBtn removed
-  
-  settingsBtn.addEventListener('click', () => {
-    if (settingsView.classList.contains('hidden')) {
-      settingsView.classList.remove('hidden');
-      feedView.classList.add('hidden');
-      settingsBtn.style.color = '#1d9bf0'; // Active color
-    } else {
-      settingsView.classList.add('hidden');
-      feedView.classList.remove('hidden');
-      settingsBtn.style.color = '';
-    }
-  });
-
   refreshBtn.addEventListener('click', () => {
-    // Switch to feed view if not already
-    settingsView.classList.add('hidden');
-    feedView.classList.remove('hidden');
-    settingsBtn.style.color = '';
-    startFetching();
+    // Refresh feed
+    renderFeed();
   });
 
   // Settings Logic
@@ -527,7 +401,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   });
 
-  // Hide menu after clicking an item
   listMenuDropdown.addEventListener('click', () => {
       listMenuDropdown.classList.add('hidden');
   });
@@ -568,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = {
         users: users,
         tabs: tabs,
-        version: "1.5",
+        version: "1.6",
         exportedAt: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -596,6 +469,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const existingKeys = new Set(users.map(u => `${u.handle}-${u.platform}-${u.tabId}`));
                 const newUsers = data.users.filter(u => !existingKeys.has(`${u.handle}-${u.platform}-${u.tabId}`));
                 
+                // Set default lastRead for imported users
+                newUsers.forEach(u => { if(!u.lastRead) u.lastRead = Date.now(); });
+
                 users = [...users, ...newUsers];
                 
                 // Merge tabs
@@ -609,6 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert(TRANSLATIONS[currentLang].msg_import_success);
                     renderTopTabs();
                     renderList();
+                    renderFeed();
                 });
             } else {
                 throw new Error("Invalid Format");
@@ -624,20 +501,15 @@ document.addEventListener('DOMContentLoaded', () => {
   timeRange.addEventListener('change', () => chrome.storage.local.set({ timeRange: timeRange.value }));
   includeReplies.addEventListener('change', () => chrome.storage.local.set({ includeReplies: includeReplies.checked }));
   
+  // This button is in Lists view now, acting as "Open Selected"
   fetchBtn.addEventListener('click', () => {
-    settingsView.classList.add('hidden');
-    feedView.classList.remove('hidden');
-    settingsBtn.style.color = '';
-    startFetching();
+    startFetching(); // This opens tabs
   });
 
   // --- Functions ---
 
   function renderTopTabs() {
-      // topTabContainer.innerHTML = ''; // Removed
-      // Update Select Options
       listSelect.innerHTML = '';
-      
       tabs.forEach(tab => {
           const option = document.createElement('option');
           option.value = tab.id;
@@ -647,7 +519,26 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
-  // function renderManageLists() { ... } // Removed
+  function showToast(message) {
+      // Create Toast Element
+      const toast = document.createElement('div');
+      toast.className = 'xt-toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      // Animate In
+      requestAnimationFrame(() => {
+          toast.classList.add('show');
+      });
+      
+      // Remove after 3s
+      setTimeout(() => {
+          toast.classList.remove('show');
+          setTimeout(() => {
+              document.body.removeChild(toast);
+          }, 300);
+      }, 3000);
+  }
 
   function addUser() {
     const input = userInput.value.trim();
@@ -660,7 +551,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let targetTabId = activeTab;
 
     if (activeTab === 'all') {
-        // If in All tab, add to platform system tab
         const systemTab = tabs.find(t => t.type === 'system' && t.platform === platform);
         if (platform === 'web' && !systemTab) {
              if (confirm(TRANSLATIONS[currentLang].msg_create_list_for_web)) {
@@ -670,7 +560,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         targetTabId = systemTab ? systemTab.id : 'x';
     } else if (currentTab.type === 'system') {
-        // In system tab mode, users are forced to their platform's system tab
         const systemTab = tabs.find(t => t.type === 'system' && t.platform === platform);
         
         if (platform === 'web' && !systemTab) {
@@ -686,31 +575,22 @@ document.addEventListener('DOMContentLoaded', () => {
             targetTabId = 'x';
         }
     } else {
-        // In custom tab, user stays in this tab regardless of platform
         targetTabId = activeTab;
     }
 
     if (users.some(u => u.handle === username && u.platform === platform && u.tabId === targetTabId)) {
-        alert(TRANSLATIONS[currentLang].msg_already_added); 
+        showToast(TRANSLATIONS[currentLang].msg_already_added); 
         return; 
     }
     
-    users.push({ handle: username, enabled: true, platform: platform, alias: '', tabId: targetTabId });
+    // Add user with lastRead = 0 (Just for sorting initially, though unread concept is gone)
+    // Actually, better to set it to Date.now() so it's "New" but not "Ancient"
+    users.push({ handle: username, enabled: true, platform: platform, alias: '', tabId: targetTabId, lastRead: Date.now() });
     saveAndRender();
     userInput.value = '';
     inputError.classList.add('hidden');
     
-    // Feedback if added to a different tab
-    if (targetTabId !== activeTab && activeTab !== 'all') {
-        // Optional: Switch to that tab? Or stay?
-        // User might be confused if they add someone and don't see them.
-        // But if they are in 'Weibo' tab and add an 'X' user, it goes to 'X' tab.
-        // Let's switch if not in All.
-        activeTab = targetTabId;
-        chrome.storage.local.set({ activeTab: activeTab });
-        renderTopTabs();
-        renderList();
-    }
+    showToast(TRANSLATIONS[currentLang].msg_added_feed_tip);
   }
 
   function extractUser(input) {
@@ -718,16 +598,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let platform = 'x';
     let username = null;
 
-    // Check for Weibo
     if (input.includes('weibo.com')) {
       platform = 'weibo';
       try {
         const url = new URL(input);
         if (url.pathname.includes('/u/')) {
-           // weibo.com/u/123456
            username = url.pathname.split('/u/')[1];
         } else {
-           // weibo.com/nickname
            username = url.pathname.replace('/', '');
         }
       } catch(e) {}
@@ -736,13 +613,10 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const url = new URL(input);
         if (url.pathname.includes('/u/')) {
-          // xueqiu.com/u/123456
           username = url.pathname.split('/u/')[1];
         } else if (url.pathname.includes('/people/')) {
-          // xueqiu.com/people/123456
           username = url.pathname.split('/people/')[1];
         } else {
-          // xueqiu.com/nickname
           username = url.pathname.replace('/', '');
         }
       } catch(e) {}
@@ -794,11 +668,6 @@ document.addEventListener('DOMContentLoaded', () => {
           platform = 'web';
           username = input;
        } else if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\/.*)?$/.test(input)) {
-          // Detect domain-like strings without protocol (e.g. "google.com", "example.org/page")
-          // but exclude simple usernames (which usually don't have dots, or if they do, we might need to be careful)
-          // X usernames can only contain letters, numbers, and underscores, no dots.
-          // So if it has a dot, it's likely a website or another platform (unless it's a specific pattern).
-          // Actually X usernames CANNOT have dots. So if there is a dot, it is NOT an X username.
           platform = 'web';
           username = 'https://' + input;
        } else {
@@ -811,19 +680,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return { username, platform };
   }
 
-  function saveAndRender() {
+  function saveAndRender(silent = false) {
     chrome.storage.local.set({ users: users }, () => {
-      renderList();
+      if (!silent) renderList();
     });
   }
 
   function renderList() {
     userList.innerHTML = '';
-    
-    // Update Select Value (in case activeTab changed externally)
     listSelect.value = activeTab;
-    
-    // Ensure actions are hidden initially
     editListBtn.classList.add('hidden');
     deleteListBtn.classList.add('hidden');
 
@@ -834,18 +699,9 @@ document.addEventListener('DOMContentLoaded', () => {
         filteredUsers = users.filter(u => u.tabId === activeTab);
     }
 
-    const listCount = document.createElement('span');
-    listCount.className = 'list-count';
-    // listCount.textContent = `(${filteredUsers.length})`;
-    
-    // We don't have a place to show count in the new UI header, so we skip rendering it to DOM or append it somewhere if needed.
-    // If user wants count, we can append it to listSelect options or title?
-    // For now, let's just not crash.
-    // listCount.textContent = `(${filteredUsers.length})`;
-
     if (filteredUsers.length === 0) {
       emptyStateList.classList.remove('hidden');
-      const tabName = currentTab ? currentTab.name : 'Unknown';
+      const tabName = tabs.find(t => t.id === activeTab)?.name || 'Unknown';
       if (activeTab === 'all') {
          emptyStateList.textContent = TRANSLATIONS[currentLang].empty_list;
       } else {
@@ -854,7 +710,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       emptyStateList.classList.add('hidden');
       filteredUsers.forEach((user) => {
-        // Find original index
         const index = users.indexOf(user);
         
         const li = document.createElement('li');
@@ -878,8 +733,103 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- Feed Logic ---
+  
+  function renderFeed() {
+      feedContainer.innerHTML = '';
+      
+      // Show all users, regardless of enabled status (checkbox in Lists)
+      // Checkbox in Lists is only for batch operations (Open Selected)
+      let displayUsers = [...users]; 
+      
+      // Sort: Recently Browsed First (Descending)
+      displayUsers.sort((a, b) => {
+          const timeA = a.lastRead || 0;
+          const timeB = b.lastRead || 0;
+          return timeB - timeA;
+      });
+      
+      if (displayUsers.length === 0) {
+          const emptyDiv = document.createElement('div');
+          emptyDiv.className = 'empty-state';
+          emptyDiv.innerHTML = TRANSLATIONS[currentLang].feed_empty_state;
+          feedContainer.appendChild(emptyDiv);
+          return;
+      }
+      
+      displayUsers.forEach(user => {
+          const index = users.indexOf(user);
+          const card = document.createElement('div');
+          card.className = 'source-card'; // No unread class
+          
+          const displayName = user.alias || user.handle;
+          const displayHandle = user.platform === 'web' ? new URL(user.handle).hostname : user.handle;
+          
+          // Time logic
+          const timeSince = user.lastRead === 0 ? 'Never checked' : timeAgo(user.lastRead);
+          
+          card.innerHTML = `
+            <div class="source-info">
+                <div class="source-avatar" style="background-color: ${stringToColor(displayName)}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
+                    ${displayName.charAt(0).toUpperCase()}
+                </div>
+                <div class="source-details">
+                    <div class="source-name-row">
+                        <span class="source-name">${displayName}</span>
+                    </div>
+                    <div class="source-meta">
+                        <span class="source-platform">${user.platform}</span>
+                        <span>${timeSince}</span>
+                    </div>
+                </div>
+            </div>
+            <!-- No Check Button -->
+          `;
+          
+          // Click Handler
+          card.addEventListener('click', () => {
+              openUserUrl(user);
+              // Update lastRead
+              users[index].lastRead = Date.now();
+              // Save and update UI (to update "Just now" and move to top)
+              saveAndRender(false); 
+          });
+          
+          feedContainer.appendChild(card);
+      });
+  }
+  
+  function openUserUrl(user) {
+      let url = '';
+      const handle = user.handle;
+      
+      switch(user.platform) {
+          case 'x': url = `https://x.com/${handle}`; break;
+          case 'weibo': 
+            url = /^\d+$/.test(handle) ? `https://weibo.com/u/${handle}` : `https://s.weibo.com/weibo?q=nickname:${encodeURIComponent(handle)}`;
+            break;
+          case 'xueqiu':
+            url = /^\d+$/.test(handle) ? `https://xueqiu.com/u/${handle}` : `https://xueqiu.com/u/${encodeURIComponent(handle)}`;
+            break;
+          case 'xiaohongshu':
+            url = handle.startsWith('http') ? handle : `https://www.xiaohongshu.com/user/profile/${handle}`;
+            break;
+          case 'substack':
+            url = handle.startsWith('http') ? handle : `https://${handle}.substack.com`;
+            break;
+          case 'web':
+            url = handle;
+            break;
+          default:
+            url = handle.startsWith('http') ? handle : `https://x.com/${handle}`;
+      }
+      
+      chrome.tabs.create({ url: url });
+  }
+
   function startFetching() {
-    // Get users in active tab
+    // Legacy function reused for "Open Selected" in Lists view
+    // Logic: Open tabs for selected users in current list
     let targetUsers = [];
     if (activeTab === 'all') {
         targetUsers = users.filter(u => u.enabled);
@@ -888,382 +838,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (targetUsers.length === 0) { 
-      tweetsContainer.innerHTML = `<div class="empty-state">${TRANSLATIONS[currentLang].msg_no_active_users}</div>`;
+      showToast(TRANSLATIONS[currentLang].msg_no_active_users);
       return; 
     }
-
-    // Group by platform
-    const groups = {};
+    
+    let count = 0;
     targetUsers.forEach(u => {
-        if (!groups[u.platform]) groups[u.platform] = [];
-        groups[u.platform].push(u.handle);
-    });
-
-    // Reset UI
-    tweetsContainer.innerHTML = '';
-    
-    // Execute Actions
-    let handledFeed = false;
-
-    // 1. Open Tabs (Background actions)
-    let openedTabsCount = 0;
-    
-    if (groups.weibo && groups.weibo.length > 0) {
-        fetchWeibo(groups.weibo, true); // true = silent/append mode (don't clear UI)
-        openedTabsCount += groups.weibo.length;
-    }
-    if (groups.xiaohongshu && groups.xiaohongshu.length > 0) {
-        fetchXiaohongshu(groups.xiaohongshu, true);
-        openedTabsCount += groups.xiaohongshu.length;
-    }
-    if (groups.substack && groups.substack.length > 0) {
-        fetchSubstack(groups.substack, true);
-        openedTabsCount += groups.substack.length;
-    }
-    if (groups.xueqiu && groups.xueqiu.length > 0) {
-        fetchXueqiu(groups.xueqiu, true);
-        openedTabsCount += groups.xueqiu.length;
-    }
-    if (groups.web && groups.web.length > 0) {
-        fetchWeb(groups.web, true);
-        openedTabsCount += groups.web.length;
-    }
-
-    // 2. Load Feed (Primary Content)
-    // Prioritize X, then Xueqiu
-    if (groups.x && groups.x.length > 0) {
-        fetchX(groups.x);
-        handledFeed = true;
-    }
-    
-    // If we only opened tabs and no feed to show
-    if (!handledFeed && openedTabsCount > 0) {
-        tweetsContainer.innerHTML = `<div class="empty-state">Opened ${openedTabsCount} pages in background tabs.</div>`;
-        statusText.textContent = TRANSLATIONS[currentLang].status_done;
-    }
-  }
-
-  function fetchX(handles) {
-    currentFetchPlatform = 'x';
-    tweetsContainer.innerHTML = TRANSLATIONS[currentLang].feed_loading_x;
-    statusText.textContent = TRANSLATIONS[currentLang].status_initializing_x;
-
-    const days = parseInt(timeRange.value);
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    const sinceDate = date.toISOString().split('T')[0];
-    
-    const fromPart = handles.map(u => `from:${u}`).join(' OR ');
-    let query = `(${fromPart}) since:${sinceDate}`;
-    if (!includeReplies.checked) query += ' -filter:replies';
-    
-    const searchUrl = `https://x.com/search?q=${encodeURIComponent(query)}&src=typed_query&f=live`;
-
-    chrome.storage.local.remove(['cachedTweets', 'fetchStatus'], () => {
-      chrome.runtime.sendMessage({ action: "START_FETCH", url: searchUrl }, (response) => {
-        startPolling();
-      });
-    });
-  }
-
-  function fetchWeibo(handles, silent = false) {
-    if (!silent) {
-        currentFetchPlatform = 'weibo';
-        tweetsContainer.innerHTML = TRANSLATIONS[currentLang].feed_opening_weibo;
-        statusText.textContent = TRANSLATIONS[currentLang].status_opening_weibo;
-    }
-
-    let count = 0;
-    handles.forEach(target => {
-        let url;
-        if (/^\d+$/.test(target)) {
-            url = `https://weibo.com/u/${target}`;
-        } else {
-            url = `https://s.weibo.com/weibo?q=nickname:${encodeURIComponent(target)}`;
-        }
-        chrome.tabs.create({ url: url, active: false });
+        openUserUrl(u);
+        u.lastRead = Date.now(); // Mark as read when batch opening
         count++;
     });
-
-    if (!silent) {
-        tweetsContainer.innerHTML = TRANSLATIONS[currentLang].weibo_empty_state.replace('{count}', count).replace('{s}', count > 1 ? 's' : '');
-        statusText.textContent = TRANSLATIONS[currentLang].status_done;
-    }
-  }
-
-  function fetchXueqiu(handles, silent = false) {
-    if (!silent) {
-        currentFetchPlatform = 'xueqiu';
-        tweetsContainer.innerHTML = TRANSLATIONS[currentLang].feed_opening_xueqiu;
-        statusText.textContent = TRANSLATIONS[currentLang].status_opening_xueqiu;
-    }
-
-    let count = 0;
-    handles.forEach(target => {
-        let url;
-        if (/^\d+$/.test(target)) {
-            url = `https://xueqiu.com/u/${target}`;
-        } else {
-            url = `https://xueqiu.com/u/${encodeURIComponent(target)}`;
-        }
-        chrome.tabs.create({ url: url, active: false });
-        count++;
-    });
-
-    if (!silent) {
-        tweetsContainer.innerHTML = TRANSLATIONS[currentLang].xueqiu_empty_state.replace('{count}', count).replace('{s}', count > 1 ? 's' : '');
-        statusText.textContent = TRANSLATIONS[currentLang].status_done;
-    }
-  }
-
-  function fetchXiaohongshu(handles, silent = false) {
-    if (!silent) {
-        currentFetchPlatform = 'xiaohongshu';
-        tweetsContainer.innerHTML = TRANSLATIONS[currentLang].feed_opening_xhs;
-        statusText.textContent = TRANSLATIONS[currentLang].status_opening_xhs;
-    }
-
-    let count = 0;
-    handles.forEach(target => {
-        let url;
-        if (target.startsWith('http')) {
-             url = target;
-        } else {
-             url = `https://www.xiaohongshu.com/user/profile/${target}`;
-        }
-        chrome.tabs.create({ url: url, active: false });
-        count++;
-    });
-
-    if (!silent) {
-        tweetsContainer.innerHTML = TRANSLATIONS[currentLang].xhs_empty_state.replace('{count}', count).replace('{s}', count > 1 ? 's' : '');
-        statusText.textContent = TRANSLATIONS[currentLang].status_done;
-    }
-  }
-
-  function fetchSubstack(handles, silent = false) {
-    if (!silent) {
-        currentFetchPlatform = 'substack';
-        tweetsContainer.innerHTML = TRANSLATIONS[currentLang].feed_opening_substack;
-        statusText.textContent = TRANSLATIONS[currentLang].status_opening_substack;
-    }
-
-    let count = 0;
-    handles.forEach(target => {
-        let url;
-        if (target.startsWith('http')) {
-             url = target;
-        } else if (target.startsWith('@')) {
-             url = `https://substack.com/${target}`;
-        } else {
-             url = `https://${target}.substack.com`;
-        }
-        chrome.tabs.create({ url: url, active: false });
-        count++;
-    });
-
-    if (!silent) {
-        tweetsContainer.innerHTML = TRANSLATIONS[currentLang].substack_empty_state.replace('{count}', count).replace('{s}', count > 1 ? 's' : '');
-        statusText.textContent = TRANSLATIONS[currentLang].status_done;
-    }
-  }
-
-  function fetchWeb(handles, silent = false) {
-    if (!silent) {
-        currentFetchPlatform = 'web';
-        tweetsContainer.innerHTML = '<div class="empty-state">Opening links...</div>';
-        statusText.textContent = 'Opening pages...';
-    }
-
-    let count = 0;
-    handles.forEach(url => {
-        chrome.tabs.create({ url: url, active: false });
-        count++;
-    });
-
-    if (!silent) {
-        tweetsContainer.innerHTML = `<div class="empty-state">Opened ${count} link${count > 1 ? 's' : ''} in new tabs.</div>`;
-        statusText.textContent = TRANSLATIONS[currentLang].status_done;
-    }
-  }
-
-  function startPolling() {
-    if (statusPoll) clearInterval(statusPoll);
     
-    statusPoll = setInterval(() => {
-      chrome.storage.local.get(['fetchStatus', 'cachedTweets'], (result) => {
-        const status = result.fetchStatus;
-        if (!status) return;
-
-        statusText.textContent = status.message;
-
-        if (status.state === 'success') {
-          clearInterval(statusPoll);
-          
-          const days = parseInt(timeRange.value || '1');
-          const date = new Date();
-          date.setDate(date.getDate() - days);
-          const sinceTime = date.getTime();
-          
-          let filteredTweets = result.cachedTweets;
-          if (currentFetchPlatform !== 'x') {
-             filteredTweets = result.cachedTweets.filter(t => {
-                 if (!t.time) return true;
-                 const tweetTime = new Date(t.time).getTime();
-                 return tweetTime >= sinceTime;
-             });
-          }
-
-          renderTweets(filteredTweets);
-          statusText.textContent = TRANSLATIONS[currentLang].status_updated.replace('{time}', new Date().toLocaleTimeString());
-        } else if (status.state === 'error') {
-          clearInterval(statusPoll);
-          tweetsContainer.innerHTML = `<div class="empty-state" style="color:red;">Error: ${status.message}</div>`;
-        } else {
-          if (!tweetsContainer.querySelector('.loading-spinner')) {
-             tweetsContainer.innerHTML = `<div class="loading-spinner">${status.message}</div>`;
-          }
-        }
-      });
-    }, 500);
+    saveAndRender(true);
   }
-
-  function renderTweets(tweets) {
-    tweetsContainer.innerHTML = '';
-    
-    if (tweets && tweets.length === 1 && tweets[0].error) {
-        const err = tweets[0];
-        if (err.error === 'login_required') {
-             tweetsContainer.innerHTML = `
-                <div class="empty-state">
-                    <p>Login Required</p>
-                    <p>Please login to the target platform first.</p>
-                </div>`;
-        } else if (err.error === 'uid_resolution_failed') {
-             tweetsContainer.innerHTML = '<div class="empty-state">Could not read Weibo profile info (UID resolution failed). Please make sure you are logged in, then retry.</div>';
-        } else if (err.error === 'no_results') {
-             tweetsContainer.innerHTML = '<div class="empty-state">No results found for this user.</div>';
-        } else if (err.error === 'timeout') {
-             tweetsContainer.innerHTML = '<div class="empty-state">Weibo page did not load posts in time. Please retry.</div>';
-        } else {
-             tweetsContainer.innerHTML = `<div class="empty-state">Error: ${err.error}</div>`;
-        }
-        return;
-    }
-
-    if (!tweets || tweets.length === 0) {
-      tweetsContainer.innerHTML = currentFetchPlatform === 'x'
-          ? TRANSLATIONS[currentLang].feed_empty_state
-          : '<div class="empty-state">No posts found.</div>';
-      return;
-    }
-
-    tweets.forEach(tweet => {
-      const card = document.createElement('div');
-      card.className = 'tweet-card';
-      
-      let mediaHtml = '';
-      if (tweet.mediaUrls && tweet.mediaUrls.length > 0) {
-        mediaHtml = `<div class="tweet-media">
-          ${tweet.mediaUrls.map(url => `<img src="${url}" loading="lazy">`).join('')}
-        </div>`;
-      }
-
-      let replyBadge = '';
-      if (tweet.isReply) {
-        replyBadge = `<span class="reply-badge">Replying</span>`;
-      }
-
-      const isLongText = tweet.text && tweet.text.length > 150;
-      const textClass = isLongText ? 'tweet-text collapsed' : 'tweet-text';
-      const viewMoreBtn = isLongText ? '<button class="view-more-btn">View More</button>' : '';
-
-      card.innerHTML = `
-        <div class="tweet-header">
-          <img data-src="${tweet.avatarUrl}" class="avatar" src="icons/avatar-fallback.svg">
-          <div class="user-info">
-            <div class="name-row">
-              <span class="name">${tweet.name}</span>
-              ${replyBadge}
-            </div>
-            <div class="time">${tweet.time ? new Date(tweet.time).toLocaleString() : ''}</div>
-          </div>
-        </div>
-        <div class="${textClass}">${tweet.text}</div>
-        ${viewMoreBtn}
-        ${mediaHtml}
-        <div class="tweet-footer">
-          <a href="${escapeHtml(tweet.tweetUrl)}" target="_blank">
-            ${tweet.platform === 'weibo' ? 'View on Weibo' : tweet.platform === 'xueqiu' ? 'View on Xueqiu' : tweet.platform === 'xiaohongshu' ? 'View on Xiaohongshu' : tweet.platform === 'substack' ? 'View on Substack' : 'View on X'}
-          </a>
-        </div>
-      `;
-      
-      if (isLongText) {
-        const btn = card.querySelector('.view-more-btn');
-        const textDiv = card.querySelector('.tweet-text');
-        btn.addEventListener('click', () => {
-          const isCollapsed = textDiv.classList.contains('collapsed');
-          if (isCollapsed) {
-            textDiv.classList.remove('collapsed');
-            btn.textContent = 'Show Less';
-          } else {
-            textDiv.classList.add('collapsed');
-            btn.textContent = 'View More';
-          }
-        });
-      }
-      
-      const avatarImg = card.querySelector('.avatar');
-      if (tweet.avatarUrl) {
-        chrome.runtime.sendMessage({ 
-          action: "FETCH_IMAGE_BASE64", 
-          url: tweet.avatarUrl 
-        }, (response) => {
-          if (response && response.success) {
-            avatarImg.src = response.data;
-          } else {
-             if (tweet.avatarUrl) {
-                avatarImg.src = tweet.avatarUrl;
-                avatarImg.onerror = () => showTextAvatar(card, tweet.name);
-             } else {
-                showTextAvatar(card, tweet.name);
-             }
-          }
-        });
-      } else {
-         showTextAvatar(card, tweet.name);
-      }
-      
-      tweetsContainer.appendChild(card);
-    });
-  }
-
-  function showTextAvatar(card, name) {
-    const img = card.querySelector('.avatar');
-    if (img) {
-      const div = document.createElement('div');
-      div.className = 'avatar text-avatar';
-      div.textContent = (name || '?').charAt(0).toUpperCase();
-      div.style.backgroundColor = stringToColor(name || 'user');
-      div.style.display = 'flex';
-      div.style.alignItems = 'center';
-      div.style.justifyContent = 'center';
-      div.style.color = 'white';
-      div.style.fontWeight = 'bold';
-      div.style.fontSize = '20px';
-      img.replaceWith(div);
-    }
-  }
-
-  function escapeHtml(text) {
-    if (!text) return '';
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+  
+  function timeAgo(timestamp) {
+      const seconds = Math.floor((Date.now() - timestamp) / 1000);
+      let interval = seconds / 31536000;
+      if (interval > 1) return Math.floor(interval) + "y ago";
+      interval = seconds / 2592000;
+      if (interval > 1) return Math.floor(interval) + "mo ago";
+      interval = seconds / 86400;
+      if (interval > 1) return Math.floor(interval) + "d ago";
+      interval = seconds / 3600;
+      if (interval > 1) return Math.floor(interval) + "h ago";
+      interval = seconds / 60;
+      if (interval > 1) return Math.floor(interval) + "m ago";
+      return "Just now";
   }
 
   function stringToColor(str) {

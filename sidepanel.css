@@ -89,6 +89,48 @@ body {
   color: #333;
 }
 
+/* Nav Tabs */
+.xt-nav-tabs {
+    display: flex;
+    border-bottom: 1px solid #eff3f4;
+    background: #fff;
+    padding: 0 16px;
+}
+
+.nav-tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 12px 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #536471;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.nav-tab-btn:hover {
+    background-color: rgba(0,0,0,0.03);
+    color: #0f1419;
+}
+
+.nav-tab-btn.active {
+    color: #0f1419;
+}
+
+.nav-tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 4px;
+    background-color: #1d9bf0;
+    border-radius: 2px;
+}
+
 /* Content Area */
 .xt-content {
   flex: 1;
@@ -106,124 +148,214 @@ body {
   display: none !important;
 }
 
+/* Toast Notification */
+.xt-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #0f1419;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1000;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.xt-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
 /* Feed View */
+.feed-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.feed-filter {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filter-chip {
+    padding: 6px 12px;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid #eff3f4;
+    font-size: 13px;
+    font-weight: 500;
+    color: #536471;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.filter-chip.active {
+    background: #0f1419;
+    color: #fff;
+    border-color: #0f1419;
+}
+
+.filter-chip:hover:not(.active) {
+    background: #eff3f4;
+}
+
 .status-text {
   font-size: 13px;
   color: #536471;
   margin-bottom: 12px;
   padding-left: 4px;
+  display: none; /* Hide default status text to save space */
 }
 
-.tweet-card {
-  background: white;
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  border: 1px solid #eff3f4;
+.source-card {
+    background: white;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid #eff3f4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: background 0.1s;
 }
 
-.tweet-header {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 8px;
+.source-card:hover {
+    background-color: #f7f9f9;
 }
 
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  margin-right: 10px;
-  object-fit: cover;
+.source-card.unread {
+    border-left: 4px solid #1d9bf0;
 }
 
-.avatar-fallback {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  margin-right: 10px;
-  background-color: #cfd9de;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 16px;
+.source-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
 }
 
-.user-info {
-  flex: 1;
-  min-width: 0;
+.source-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
 }
 
-.name-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.source-details {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 
-.name {
-  font-weight: 700;
-  color: #0f1419;
-  font-size: 15px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.source-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.handle {
-  color: #536471;
-  font-size: 14px;
-  margin-left: 4px;
+.source-name {
+    font-weight: 700;
+    font-size: 14px;
+    color: #0f1419;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.time {
-  font-size: 13px;
-  color: #536471;
+.source-platform {
+    font-size: 11px;
+    color: #536471;
+    background: #eff3f4;
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
-.reply-to {
-  font-size: 13px;
-  color: #536471;
-  margin-bottom: 4px;
+.source-meta {
+    font-size: 12px;
+    color: #536471;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.reply-to a {
-  color: #1d9bf0;
-  text-decoration: none;
+.unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #1d9bf0;
+    display: none;
 }
 
-.tweet-text {
-  font-size: 15px;
-  line-height: 1.4;
-  color: #0f1419;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+.source-card.unread .unread-dot {
+    display: block;
 }
 
-.tweet-text a {
-  color: #1d9bf0;
-  text-decoration: none;
+.check-btn {
+    background: none;
+    border: 1px solid #cfd9de;
+    border-radius: 16px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #0f1419;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-.tweet-footer {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
+.check-btn:hover {
+    background: #eff3f4;
 }
 
-.view-btn {
-  font-size: 12px;
-  color: #1d9bf0;
-  text-decoration: none;
-  font-weight: 500;
+.source-card.unread .check-btn {
+    background: #0f1419;
+    color: white;
+    border-color: #0f1419;
 }
 
-.view-btn:hover {
-  text-decoration: underline;
+/* Feed Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    color: #536471;
 }
 
-/* Settings View */
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.empty-state-text {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f1419;
+    margin-bottom: 8px;
+}
+
+.empty-state-subtext {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Lists View (Old Settings) */
 .input-group {
   display: flex;
   gap: 8px;
@@ -337,25 +469,6 @@ body {
 
 .menu-item:hover {
     background: #f7f9f9;
-}
-
-.text-btn.blue-link {
-    color: #1d9bf0;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background 0.2s;
-}
-
-.text-btn.blue-link:hover {
-    background: rgba(29, 155, 240, 0.1);
-    text-decoration: none;
-}
-
-.divider-dot {
-    color: #cfd9de;
-    font-weight: bold;
 }
 
 .text-btn {
@@ -514,114 +627,8 @@ select {
   font-size: 15px;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #536471;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 .loading-spinner {
   text-align: center;
   padding: 20px;
   color: #536471;
-}
-
-/* Tabs */
-.platform-tabs {
-  display: flex;
-  padding: 12px 16px 4px 16px;
-  background: #fff;
-  gap: 8px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border-bottom: 1px solid #eff3f4;
-}
-
-.tab-btn {
-  background: none;
-  border: none;
-  padding: 8px 12px;
-  color: #536471;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  position: relative;
-  white-space: nowrap;
-  border-radius: 16px;
-}
-
-.tab-btn:hover {
-  background-color: #eff3f4;
-}
-
-.tab-btn.active {
-  color: #0f1419;
-  background-color: #eff3f4;
-}
-
-/* List Management Chips */
-.tabs-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.tab-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 16px;
-  background: #eff3f4;
-  color: #536471;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid transparent;
-}
-
-.tab-chip:hover {
-  background: #e1e8ed;
-}
-
-.tab-chip.active {
-  background: #0f1419;
-  color: white;
-}
-
-.tab-chip-actions {
-  display: flex;
-  gap: 4px;
-  margin-left: 4px;
-}
-
-.tab-action-btn {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.tab-chip:hover .tab-action-btn {
-  opacity: 0.7;
-}
-
-.tab-action-btn:hover {
-  background: rgba(255,255,255,0.3);
-  opacity: 1 !important;
-}
-
-/* Fix for dark background action buttons */
-.tab-chip:not(.active) .tab-action-btn:hover {
-    background: rgba(0,0,0,0.1);
 }
