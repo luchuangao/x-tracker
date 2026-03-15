@@ -98,22 +98,13 @@
         </div>
 
         <div class="controls">
-          <div class="control-row">
-            <label data-i18n="label_time_range">Time Range:</label>
-            <select id="timeRange">
-              <option value="1" data-i18n="option_24h">Last 24 Hours</option>
-              <option value="3" data-i18n="option_3d">Last 3 Days</option>
-              <option value="7" data-i18n="option_1w">Last Week</option>
-            </select>
-          </div>
-          
           <div class="control-row" style="justify-content: flex-start; gap: 8px;">
             <input type="checkbox" id="includeReplies">
-            <label for="includeReplies" data-i18n="label_include_replies">Include Replies</label>
+            <label for="includeReplies" data-i18n="label_include_replies">Include Replies (X only)</label>
           </div>
         </div>
 
-        <button id="fetchBtn" class="primary-btn full-width-btn" data-i18n="btn_fetch">Fetch & Show Tweets</button>
+        <button id="fetchBtn" class="primary-btn full-width-btn" data-i18n="btn_fetch">Open Selected</button>
       </div>
     </div>
   </div>

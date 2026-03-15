@@ -15,12 +15,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // New: Handle fetch trigger from Overlay (where we don't know the URL)
   if (request.action === "TRIGGER_REFRESH_FROM_STORAGE") {
-    chrome.storage.local.get(['users', 'timeRange', 'includeReplies'], (result) => {
+    chrome.storage.local.get(['users', 'includeReplies'], (result) => {
       if (result.users && result.users.length > 0) {
-        // Reconstruct URL
-        const days = parseInt(result.timeRange || "1");
         const date = new Date();
-        date.setDate(date.getDate() - days);
+        date.setDate(date.getDate() - 1);
         const sinceDate = date.toISOString().split('T')[0];
         
         const fromPart = result.users.map(u => `from:${u}`).join(' OR ');

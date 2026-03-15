@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const exportBtn = document.getElementById('exportBtn');
   const importInput = document.getElementById('importInput');
   const emptyStateList = document.getElementById('emptyStateList');
-  const timeRange = document.getElementById('timeRange');
   const includeReplies = document.getElementById('includeReplies');
   const fetchBtn = document.getElementById('fetchBtn');
   
@@ -66,11 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
       btn_import: "Import",
       btn_export: "Export",
       empty_list: "No users added yet.",
-      label_time_range: "Time Range:",
-      option_24h: "Last 24 Hours",
-      option_3d: "Last 3 Days",
-      option_1w: "Last Week",
-      label_include_replies: "Include Replies",
+      label_include_replies: "Include Replies (X only)",
       btn_fetch: "Open Selected",
       
       msg_invalid_url: "Invalid URL/Username",
@@ -113,11 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
       btn_import: "导入",
       btn_export: "导出",
       empty_list: "暂无用户",
-      label_time_range: "时间范围:",
-      option_24h: "过去 24 小时",
-      option_3d: "过去 3 天",
-      option_1w: "过去 1 周",
-      label_include_replies: "包含回复",
+      label_include_replies: "包含回复 (仅 X)",
       btn_fetch: "打开选中项",
       
       msg_invalid_url: "无效的链接或用户名",
@@ -151,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Initialization ---
   
   // Load initial state
-  chrome.storage.local.get(['users', 'tabs', 'timeRange', 'includeReplies', 'activeTab', 'lang'], (result) => {
+  chrome.storage.local.get(['users', 'tabs', 'includeReplies', 'activeTab', 'lang'], (result) => {
     // Language init
     if (result.lang) {
       currentLang = result.lang;
@@ -235,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderList(); // Render Management List
     renderFeed(); // Render Feed
     
-    if (result.timeRange) timeRange.value = result.timeRange;
     if (result.includeReplies !== undefined) includeReplies.checked = result.includeReplies;
   });
 
@@ -498,7 +488,6 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsText(file);
   });
 
-  timeRange.addEventListener('change', () => chrome.storage.local.set({ timeRange: timeRange.value }));
   includeReplies.addEventListener('change', () => chrome.storage.local.set({ includeReplies: includeReplies.checked }));
   
   // This button is in Lists view now, acting as "Open Selected"
@@ -804,7 +793,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const handle = user.handle;
       
       switch(user.platform) {
-          case 'x': url = `https://x.com/${handle}`; break;
+          case 'x': 
+              url = `https://x.com/${handle}`; 
+              // Check if Include Replies is checked
+              if (includeReplies && includeReplies.checked) {
+                  url += '/with_replies';
+              }
+              break;
           case 'weibo': 
             url = /^\d+$/.test(handle) ? `https://weibo.com/u/${handle}` : `https://s.weibo.com/weibo?q=nickname:${encodeURIComponent(handle)}`;
             break;
