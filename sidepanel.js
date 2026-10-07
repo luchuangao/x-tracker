@@ -3,12 +3,12 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   // Elements
-  const refreshBtn = document.getElementById('xt-refresh');
   const langToggleBtn = document.getElementById('xt-lang-toggle');
   
   // Navigation Tabs
   const navFeedBtn = document.getElementById('nav-feed');
   const navListsBtn = document.getElementById('nav-lists');
+  const navSavedBtn = document.getElementById('nav-saved');
   
   // Views
   const feedView = document.getElementById('feedView');
@@ -58,9 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
       status_done: "Done",
       
       nav_feed: "Feed",
-      nav_lists: "Lists",
+      nav_lists: "Lists", nav_saved: "Saved",
       
-      input_placeholder: "X / Weibo / Xueqiu / Substack username or URL",
+      input_placeholder: "X username or URL",
       btn_add: "Add",
       btn_import: "Import",
       btn_export: "Export",
@@ -101,9 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
       status_done: "完成",
       
       nav_feed: "动态",
-      nav_lists: "列表",
+      nav_lists: "列表", nav_saved: "收藏",
       
-      input_placeholder: "输入 X / 微博 / 雪球 / Substack 用户名或链接",
+      input_placeholder: "输入 X 用户名或链接",
       btn_add: "添加",
       btn_import: "导入",
       btn_export: "导出",
@@ -229,6 +229,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result.includeReplies !== undefined) includeReplies.checked = result.includeReplies;
   });
 
+  // Local avatar bytes are shared with the reader. Update only matching X cards;
+  // storage events also keep other open panels in sync without changing feed order.
+  function applyFeedAvatar(node, data) {
+    node.replaceChildren();
+    if (window.xAvatarCache.validData(data)) {
+      const image = document.createElement('img'); image.src = data; image.alt = '';
+      node.append(image);
+    } else node.textContent = node.dataset.initial;
+  }
+  window.xAvatarCache.onChange((handle, data) => {
+    for (const node of feedContainer.querySelectorAll('[data-avatar-handle]')) {
+      if (node.dataset.avatarHandle === handle) {
+        node.avatarGeneration = (node.avatarGeneration || 0) + 1;
+        applyFeedAvatar(node, data);
+      }
+    }
+  });
+
   // --- Event Listeners ---
 
   // Navigation
@@ -240,7 +258,11 @@ document.addEventListener('DOMContentLoaded', () => {
       switchView('lists');
   });
   
+  navSavedBtn.addEventListener('click', () => switchView('saved'));
   function switchView(view) {
+      window.xReader.close();
+      for (const [button, name] of [[navFeedBtn,'feed'],[navListsBtn,'lists'],[navSavedBtn,'saved']]) button.classList.toggle('active',view===name);
+      if (view==='saved') { window.xReader.openCollection(view,currentLang); return; }
       if (view === 'feed') {
           navFeedBtn.classList.add('active');
           navListsBtn.classList.remove('active');
@@ -349,6 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTopTabs();
     renderList();
     renderFeed();
+    window.xReader.setLanguage(currentLang);
   });
 
   function updateLanguageUI() {
@@ -369,11 +392,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (t[key]) el.placeholder = t[key];
     });
   }
-
-  refreshBtn.addEventListener('click', () => {
-    // Refresh feed
-    renderFeed();
-  });
 
   // Settings Logic
   addBtn.addEventListener('click', addUser);
@@ -775,9 +793,23 @@ document.addEventListener('DOMContentLoaded', () => {
             <!-- No Check Button -->
           `;
           
+          if (user.platform === 'x') {
+              const avatar = card.querySelector('.source-avatar');
+              avatar.dataset.avatarHandle = user.handle.replace(/^@/, '').toLowerCase();
+              avatar.dataset.initial = displayName.charAt(0).toUpperCase();
+              const revision = avatar.avatarGeneration = 0;
+              window.xAvatarCache.resolve(user.handle, '').then(data => {
+                  if (avatar.avatarGeneration === revision && data) applyFeedAvatar(avatar, data);
+              }).catch(() => {});
+          }
+
           // Click Handler
           card.addEventListener('click', () => {
-              openUserUrl(user);
+              if (user.platform === 'x') {
+                  window.xReader.open(user, includeReplies.checked, currentLang);
+              } else {
+                  openUserUrl(user);
+              }
               // Update lastRead
               users[index].lastRead = Date.now();
               // Save and update UI (to update "Just now" and move to top)
