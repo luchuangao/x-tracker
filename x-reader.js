@@ -162,8 +162,8 @@ window.xReader = (() => {
         body.append(bilingual);
         // Legacy on-device results stay in storage but are not reused as X text.
         let translated = (tweet.translationSource === 'chrome' || !tweet.translationSource) ? tweet.translation || '' : '';
-        let translationHiddenByUser = false;
-        if (translated) { bilingual.append(element('p', translated, 'x-reader-text')); bilingual.hidden = false; }
+        let translationHiddenByUser = true;
+        if (translated) bilingual.append(element('p', translated, 'x-reader-text'));
         const media = element('div', '', 'x-post-media');
         for (const url of (tweet.media || []).slice(0, 4)) {
           const src = safeUrl(url, true);
