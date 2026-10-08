@@ -70,10 +70,9 @@ window.xReader = (() => {
     back.title = t.back;
     back.addEventListener('click', close);
     const header = element('div', '', 'x-reader-header');
-    const title = element('div', '', 'x-reader-title');
-    title.append(element('h2', options.collection ? t.saved : user.alias || user.handle));
-    if (!options.collection) title.append(element('div', `@${user.handle}`, 'x-reader-meta'));
-    const owner = state; owner.back = back;
+    const backLabel = element('span', t.back.replace(/^←\s*/, ''), 'x-reader-back-label');
+    back.append(backLabel);
+    const owner = state; owner.back = back; owner.backLabel = backLabel;
     function applyAvatar(handle, data) {
       if (state !== owner) return;
       for (const entry of owner.avatarEntries) {
@@ -84,7 +83,7 @@ window.xReader = (() => {
       }
     }
     owner.applyAvatar = applyAvatar;
-    header.append(back, title);
+    header.append(back);
     posts = element('div');
     status = element('p', '', 'x-reader-status');
     status.setAttribute('role', 'status');
@@ -432,6 +431,7 @@ window.xReader = (() => {
     state.lang = lang;
     const t = words[lang];
     state.back.title = t.back; state.back.setAttribute('aria-label', t.back);
+    state.backLabel.textContent = t.back.replace(/^←\s*/, '');
     for (const entry of state.timeEntries) entry.time.textContent = shortTime(entry.timestamp, lang);
     more.textContent = state.busy ? t.loading : state.failed ? t.retry : state.collection ? t.more : t.older;
     if (!posts.children.length && !state.busy && !state.failed) status.textContent = state.collection ? t.noSaved : t.empty;

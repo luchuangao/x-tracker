@@ -694,12 +694,11 @@ select {
 /* X-style timeline inside the existing side panel. */
 #xt-content:has(.x-reader:not(.hidden)) { padding: 0; background: #fff; }
 .x-reader { color: #0f1419; font-size: 15px; background: #fff; min-height: 100%; }
-.x-reader-header { position: sticky; top: 0; display: flex; align-items: center; gap: 18px; padding: 10px 16px; background: rgba(255,255,255,.96); border-bottom: 1px solid #eff3f4; z-index: 2; }
-.x-reader-back { border: 0; background: #f5f7f8; border-radius: 50%; width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; padding: 0; cursor: pointer; color: #0f1419; transition: background .15s ease; }
-.x-reader-back svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.x-reader-back:hover { background: #eff3f4; }
-.x-reader-title { min-width: 0; }
-.x-reader-title h2 { font-size: 18px; line-height: 24px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Compact reader toolbar; author details live in each post. */
+.x-reader-header { position: sticky; top: 0; display: flex; align-items: center; padding: 5px 12px; background: rgba(255,255,255,.96); border-bottom: 1px solid #eff3f4; z-index: 2; }
+.x-reader-back { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; border: 0; border-radius: 8px; padding: 0 8px; background: transparent; color: #536471; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: background .15s ease, color .15s ease; }
+.x-reader-back svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.x-reader-back:hover { background: #f5f7f8; color: #0f1419; }
 .x-reader-meta { color: #536471; font-size: 13px; }
 .x-reader-post { display: flex; gap: 10px; padding: 14px 16px 10px; border-bottom: 1px solid #eff3f4; }
 .x-post-avatar { width: 40px; height: 40px; border-radius: 50%; background: #eff3f4; color: #536471; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; flex-shrink: 0; overflow: hidden; }
@@ -738,9 +737,6 @@ select {
 
 
 /* Main navigation stays visible; only the content area scrolls. */
-.x-reader-header { gap: 10px; padding: 12px; min-height: 42px; flex-wrap: nowrap; }
-.x-reader-title { flex: 1; min-width: 0; }
-.x-reader-title h2 { font-size: 17px; }
 .x-post-translation { margin: 12px 0; }
 .x-post-translation[hidden] { display: none; }
 .x-post-actions { display: flex; gap: 2px; align-items: center; }

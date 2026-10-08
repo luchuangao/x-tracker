@@ -1,4 +1,4 @@
-importScripts('x-avatar-cache.js?v=2', 'x-post-store.js?v=1.14.0', 'x-reader-background.js?v=1.14.0');
+importScripts('x-avatar-cache.js?v=2', 'x-post-store.js?v=1.14.1', 'x-reader-background.js?v=1.14.1');
 // background.js
 // Handles the heavy lifting of tab management and scraping
 
