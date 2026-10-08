@@ -103,6 +103,34 @@
       </div>
     </div>
   </div>
+  <dialog id="userEditDialog" class="user-edit-dialog" aria-labelledby="userEditTitle">
+    <form id="userEditForm">
+      <div class="user-edit-heading">
+        <div>
+          <h2 id="userEditTitle" data-i18n="edit_user_title">Edit account</h2>
+          <p id="userEditAccount"></p>
+        </div>
+        <button id="userEditClose" class="user-edit-close" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <label class="user-edit-field" for="userEditAlias">
+        <span data-i18n="edit_user_name">Display name</span>
+        <input id="userEditAlias" name="alias" type="text" maxlength="100" autocomplete="off">
+      </label>
+      <label class="user-edit-field" for="userEditTags">
+        <span data-i18n="edit_user_tags">Tags</span>
+        <input id="userEditTags" name="tags" type="text" maxlength="240" autocomplete="off" data-i18n-placeholder="edit_tags_placeholder" placeholder="AI, Investing" aria-describedby="userEditTagsHint">
+      </label>
+      <p id="userEditTagsHint" class="user-edit-hint" data-i18n="edit_tags_hint">Separate tags with commas.</p>
+      <div id="userEditTagPreview" class="account-tags user-edit-tag-preview"></div>
+      <p id="userEditError" class="user-edit-error" role="alert" hidden></p>
+      <div class="user-edit-actions">
+        <button id="userEditCancel" class="user-edit-cancel" type="button" data-i18n="edit_cancel">Cancel</button>
+        <button id="userEditSave" class="user-edit-save" type="submit" data-i18n="edit_save">Save</button>
+      </div>
+    </form>
+  </dialog>
   <script src="x-avatar-cache.js"></script>
   <script src="x-post-store.js"></script>
   <script src="x-post-tools.js"></script>

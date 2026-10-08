@@ -34,6 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const emptyStateList = document.getElementById('emptyStateList');
   const includeReplies = document.getElementById('includeReplies');
   const fetchBtn = document.getElementById('fetchBtn');
+  const userEditDialog = document.getElementById('userEditDialog');
+  const userEditForm = document.getElementById('userEditForm');
+  const userEditAlias = document.getElementById('userEditAlias');
+  const userEditTags = document.getElementById('userEditTags');
+  const userEditSave = document.getElementById('userEditSave');
+  const userEditError = document.getElementById('userEditError');
+  let editingUser = null;
   
   // State
   let users = [];
@@ -70,7 +77,10 @@ document.addEventListener('DOMContentLoaded', () => {
       
       msg_invalid_url: "Invalid URL/Username",
       msg_already_added: "Already added",
-      msg_enter_alias: "Enter alias for this user (leave empty to use original handle):",
+      edit_user_title: "Edit account", edit_user_name: "Display name", edit_user_tags: "Tags",
+      edit_tags_placeholder: "AI, Investing", edit_tags_hint: "Separate tags with commas.",
+      edit_cancel: "Cancel", edit_save: "Save", edit_close: "Close", edit_remove_tag: "Remove tag",
+      edit_save_error: "Couldn’t save. Please try again.",
       msg_no_active_users: "No active users selected in this list.",
       
       btn_new_list: "+ New List",
@@ -113,7 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
       
       msg_invalid_url: "无效的链接或用户名",
       msg_already_added: "已存在",
-      msg_enter_alias: "请输入备注名 (留空则使用原始名称):",
+      edit_user_title: "编辑账号", edit_user_name: "备注名", edit_user_tags: "标签",
+      edit_tags_placeholder: "AI，投资", edit_tags_hint: "多个标签用逗号分隔。",
+      edit_cancel: "取消", edit_save: "保存", edit_close: "关闭", edit_remove_tag: "移除标签",
+      edit_save_error: "保存失败，请重试。",
       msg_no_active_users: "此列表中未选择任何用户。",
       
       btn_new_list: "+ 新建列表",
@@ -186,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
           // Migration Logic
           if (typeof u === 'string') {
             needsMigration = true;
-            return { handle: u, enabled: true, platform: 'x', alias: '', tabId: 'x', lastRead: Date.now() };
+            return { handle: u, enabled: true, platform: 'x', alias: '', tags: [], tabId: 'x', lastRead: Date.now() };
           }
 
           if (typeof u === 'object') {
@@ -211,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!platform) platform = 'x';
             
-            return { handle, enabled, platform, alias, tabId, lastRead };
+            return { handle, enabled, platform, alias, tags: normalizeTags(u.tags), tabId, lastRead };
           }
           return null;
         })
@@ -421,15 +434,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Edit Alias
+    // Edit the account inside the extension.
     if (e.target.classList.contains('edit-btn')) {
       const index = e.target.dataset.index;
       const user = users[index];
-      const newAlias = prompt(TRANSLATIONS[currentLang].msg_enter_alias, user.alias || user.handle);
-      if (newAlias !== null) {
-          user.alias = newAlias.trim();
-          saveAndRender();
-      }
+      if (user) openUserEditor(user);
       return;
     }
   });
@@ -478,7 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newUsers = data.users.filter(u => !existingKeys.has(`${u.handle}-${u.platform}-${u.tabId}`));
                 
                 // Set default lastRead for imported users
-                newUsers.forEach(u => { if(!u.lastRead) u.lastRead = Date.now(); });
+                newUsers.forEach(u => { if(!u.lastRead) u.lastRead = Date.now(); u.tags = normalizeTags(u.tags); });
 
                 users = [...users, ...newUsers];
                 
@@ -514,6 +523,87 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- Functions ---
+
+  function normalizeTags(value) {
+    const labels = Array.isArray(value) ? value : typeof value === 'string' ? value.split(/[,，;；\n]+/) : [];
+    const seen = new Set();
+    return labels.filter(tag => typeof tag === 'string').map(tag => tag.trim()).filter(tag => {
+      const key = tag.toLocaleLowerCase();
+      if (!tag || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char]));
+  }
+
+  function accountTags(tags, removable = false) {
+    const group = document.createElement('div');
+    group.className = 'account-tags';
+    for (const tag of normalizeTags(tags)) {
+      const chip = document.createElement(removable ? 'button' : 'span');
+      chip.className = 'account-tag';
+      chip.textContent = tag;
+      chip.title = tag;
+      if (removable) {
+        chip.type = 'button';
+        chip.setAttribute('aria-label', `${TRANSLATIONS[currentLang].edit_remove_tag}: ${tag}`);
+        chip.addEventListener('click', () => {
+          userEditTags.value = normalizeTags(userEditTags.value).filter(label => label !== tag).join(', ');
+          renderEditorTags();
+          userEditTags.focus();
+        });
+      }
+      group.append(chip);
+    }
+    return group;
+  }
+
+  function renderEditorTags() {
+    document.getElementById('userEditTagPreview').replaceChildren(...accountTags(userEditTags.value, true).childNodes);
+  }
+
+  function openUserEditor(user) {
+    editingUser = user;
+    userEditAlias.value = user.alias || '';
+    userEditAlias.placeholder = user.handle;
+    userEditTags.value = normalizeTags(user.tags).join(', ');
+    document.getElementById('userEditAccount').textContent = user.platform === 'x' ? `@${user.handle.replace(/^@/, '')}` : user.handle;
+    document.getElementById('userEditClose').setAttribute('aria-label', TRANSLATIONS[currentLang].edit_close);
+    userEditError.hidden = true;
+    renderEditorTags();
+    userEditDialog.showModal();
+    userEditAlias.focus();
+  }
+
+  userEditTags.addEventListener('input', renderEditorTags);
+  for (const id of ['userEditClose', 'userEditCancel']) document.getElementById(id).addEventListener('click', () => userEditDialog.close());
+  userEditDialog.addEventListener('close', () => {
+    const index = users.indexOf(editingUser);
+    editingUser = null;
+    userList.querySelector(`.edit-btn[data-index="${index}"]`)?.focus();
+  });
+  userEditForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!editingUser || userEditSave.disabled) return;
+    userEditSave.disabled = true;
+    userEditError.hidden = true;
+    const updated = {...editingUser, alias: userEditAlias.value.trim(), tags: normalizeTags(userEditTags.value)};
+    const nextUsers = users.map(user => user === editingUser ? updated : user);
+    try {
+      await chrome.storage.local.set({users: nextUsers});
+      users = nextUsers;
+      editingUser = updated;
+      renderList();
+      renderFeed();
+      userEditDialog.close();
+    } catch (error) {
+      userEditError.textContent = TRANSLATIONS[currentLang].edit_save_error;
+      userEditError.hidden = false;
+    } finally { userEditSave.disabled = false; }
+  });
 
   function renderTopTabs() {
       listSelect.innerHTML = '';
@@ -592,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Add user with lastRead = 0 (Just for sorting initially, though unread concept is gone)
     // Actually, better to set it to Date.now() so it's "New" but not "Ancient"
-    users.push({ handle: username, enabled: true, platform: platform, alias: '', tabId: targetTabId, lastRead: Date.now() });
+    users.push({ handle: username, enabled: true, platform: platform, alias: '', tags: [], tabId: targetTabId, lastRead: Date.now() });
     saveAndRender();
     userInput.value = '';
     inputError.classList.add('hidden');
@@ -727,14 +817,16 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="checkbox" class="user-checkbox" data-index="${index}" ${user.enabled ? 'checked' : ''}>
             <div class="user-info-container">
                 <div class="user-alias-row">
-                    <span class="user-alias" title="${user.handle}">${user.alias || user.handle}</span>
-                    <button class="edit-btn" data-index="${index}" title="Edit Alias">✎</button>
+                    <span class="user-alias" title="${escapeHTML(user.handle)}">${escapeHTML(user.alias || user.handle)}</span>
+                    <button class="edit-btn" data-index="${index}" title="${TRANSLATIONS[currentLang].edit_user_title}" aria-label="${TRANSLATIONS[currentLang].edit_user_title}">✎</button>
                 </div>
                 <span class="user-handle" title="${user.platform}">${user.platform}</span>
             </div>
           </div>
           <button class="delete-btn" data-index="${index}">×</button>
         `;
+        const tags = accountTags(user.tags);
+        if (tags.children.length) li.querySelector('.user-info-container').append(tags);
         userList.appendChild(li);
       });
     }
@@ -778,11 +870,11 @@ document.addEventListener('DOMContentLoaded', () => {
           card.innerHTML = `
             <div class="source-info">
                 <div class="source-avatar" style="background-color: ${stringToColor(displayName)}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
-                    ${displayName.charAt(0).toUpperCase()}
+                    ${escapeHTML(displayName.charAt(0).toUpperCase())}
                 </div>
                 <div class="source-details">
                     <div class="source-name-row">
-                        <span class="source-name">${displayName}</span>
+                        <span class="source-name">${escapeHTML(displayName)}</span>
                     </div>
                     <div class="source-meta">
                         <span class="source-platform">${user.platform}</span>
@@ -792,6 +884,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <!-- No Check Button -->
           `;
+          const tags = accountTags(user.tags);
+          if (tags.children.length) { tags.classList.add('source-tags'); card.append(tags); }
           
           if (user.platform === 'x') {
               const avatar = card.querySelector('.source-avatar');
