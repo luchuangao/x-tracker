@@ -692,8 +692,8 @@ select {
 }
 
 /* X-style timeline inside the existing side panel. */
-#xt-content:has(.x-reader:not(.hidden)) { padding: 0; background: #fff; }
-.x-reader { color: #0f1419; font-size: 15px; background: #fff; min-height: 100%; }
+#xt-content:has(.x-reader:not(.hidden)) { padding: 0; background: #fff; overscroll-behavior-x: contain; }
+.x-reader { color: #0f1419; font-size: 15px; background: #fff; min-height: 100%; touch-action: pan-y pinch-zoom; overscroll-behavior-x: contain; }
 /* Compact reader toolbar; author details live in each post. */
 .x-reader-header { position: sticky; top: 0; display: flex; align-items: center; padding: 5px 12px; background: rgba(255,255,255,.96); border-bottom: 1px solid #eff3f4; z-index: 2; }
 .x-reader-back { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; border: 0; border-radius: 8px; padding: 0 8px; background: transparent; color: #536471; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: background .15s ease, color .15s ease; }

@@ -39,17 +39,74 @@ window.xReader = (() => {
     root.addEventListener('scroll', () => {
       if (state && !state.busy && !state.failed && !state.end && root.scrollHeight - root.scrollTop - root.clientHeight < 180) load();
     }, { passive: true });
-    // A single short post may not overflow the panel; wheel/touch gestures
-    // still request older posts without waiting for a scroll event.
+    // Trackpad scrolling reports negative deltaX when fingers swipe right.
+    // Lock each gesture to one axis so scrolling cannot also navigate back.
+    let wheelGesture = null, touchGesture = null, touchY = null;
+    const gestureTime = event => Number.isFinite(event.timeStamp) ? event.timeStamp : Date.now();
+    function canSwipeBack(target) {
+      return state && !state.collection && !document.querySelector('dialog[open]') &&
+        !target?.closest?.('button, a, input, textarea, select, [contenteditable="true"]') &&
+        !window.getSelection?.()?.toString();
+    }
     root.addEventListener('wheel', event => {
-      if (event.deltaY > 0 && state && !state.busy && !state.failed && !state.end && root.scrollHeight - root.scrollTop - root.clientHeight < 180) load();
+      if (event.ctrlKey || event.metaKey) { wheelGesture = null; return; }
+      const now = gestureTime(event);
+      const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? root.clientWidth || 400 : 1;
+      const dx = (event.deltaX || 0) * scale, dy = (event.deltaY || 0) * scale;
+      if (canSwipeBack(event.target)) {
+        if (!wheelGesture || wheelGesture.token !== state.token || now - wheelGesture.time > 220) {
+          wheelGesture = {token: state.token, time: now, x: 0, y: 0, axis: null};
+        }
+        wheelGesture.time = now;
+        wheelGesture.x += dx; wheelGesture.y += Math.abs(dy);
+        if (!wheelGesture.axis && Math.max(Math.abs(wheelGesture.x), wheelGesture.y) >= 16) {
+          wheelGesture.axis = Math.abs(wheelGesture.x) > wheelGesture.y * 1.7 ? 'horizontal' : 'vertical';
+        }
+        if (wheelGesture.axis === 'horizontal' && wheelGesture.x < 0) {
+          if (event.cancelable) event.preventDefault();
+          if (wheelGesture.x <= -110 && wheelGesture.y < Math.abs(wheelGesture.x) * .45) {
+            wheelGesture = null; close(); return;
+          }
+        }
+      } else wheelGesture = null;
+      // A short post may not overflow the panel; a vertical gesture still loads older posts.
+      if (dy > 0 && Math.abs(dy) >= Math.abs(dx) && state && !state.busy && !state.failed && !state.end && root.scrollHeight - root.scrollTop - root.clientHeight < 180) load();
+    }, { passive: false });
+    root.addEventListener('touchstart', event => {
+      const point = event.touches.length === 1 ? event.touches[0] : null;
+      touchY = point?.clientY ?? null;
+      touchGesture = point && canSwipeBack(event.target) ? {
+        token: state.token, id: point.identifier, startX: point.clientX, startY: point.clientY,
+        x: point.clientX, y: point.clientY, time: gestureTime(event), axis: null
+      } : null;
     }, { passive: true });
-    let touchY = null;
-    root.addEventListener('touchstart', event => { touchY = event.touches[0]?.clientY; }, { passive: true });
     root.addEventListener('touchmove', event => {
-      const y = event.touches[0]?.clientY;
+      if (event.touches.length !== 1) { touchGesture = null; touchY = null; return; }
+      const point = event.touches[0], y = point.clientY;
+      if (touchGesture && touchGesture.token !== state?.token) { touchGesture = null; touchY = null; return; }
+      if (touchGesture) {
+        touchGesture.x = point.clientX; touchGesture.y = y;
+        const dx = point.clientX - touchGesture.startX, dy = y - touchGesture.startY;
+        if (!touchGesture.axis && Math.max(Math.abs(dx), Math.abs(dy)) >= 12) {
+          touchGesture.axis = Math.abs(dx) > Math.abs(dy) * 1.7 ? 'horizontal' : 'vertical';
+        }
+        if (touchGesture.axis === 'horizontal') {
+          if (dx > 0 && event.cancelable) event.preventDefault();
+          return;
+        }
+      }
       if (touchY !== null && touchY - y > 30 && state && !state.busy && !state.failed && !state.end && root.scrollHeight - root.scrollTop - root.clientHeight < 180) { touchY = y; load(); }
+    }, { passive: false });
+    root.addEventListener('touchend', event => {
+      const gesture = touchGesture;
+      touchGesture = null; touchY = null;
+      if (!gesture || gesture.token !== state?.token || !canSwipeBack(event.target)) return;
+      const point = Array.from(event.changedTouches || []).find(touch => touch.identifier === gesture.id);
+      const dx = (point?.clientX ?? gesture.x) - gesture.startX;
+      const dy = (point?.clientY ?? gesture.y) - gesture.startY;
+      if (gesture.axis !== 'vertical' && dx >= 80 && Math.abs(dy) < dx * .45 && gestureTime(event) - gesture.time <= 1000) close();
     }, { passive: true });
+    root.addEventListener('touchcancel', () => { touchGesture = null; touchY = null; }, { passive: true });
   }
   function open(user, replies, lang, options = {}) {
     initialize();

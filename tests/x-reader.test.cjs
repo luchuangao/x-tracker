@@ -366,14 +366,100 @@ test('a pending photo gets one short hydration pass without filling a large batc
 test('Chrome translations update saved rows and card previews without removing favorites',async()=>{
  const {api,elements,ctx}=reader();let notify,exported;
  const post={id:'200',handle:'someone',time:new Date().toISOString(),text:'English',media:[],translation:'Cached X text',translationSource:'x',savedAt:1};
- ctx.window.xPostStore={onChange:fn=>{notify=fn;},collection:async()=>({tweets:[post],hasMore:false}),hydrate:async p=>p,release(){}};
+ ctx.window.xPostStore={onChange:fn=>{notify=fn;},collection:async()=>({tweets:[post],hasMore:false}),hydrate:async p=>p,translation:async()=>{},release(){}};
  ctx.window.xPostTools={preview:async(p,zh)=>{exported=zh;}};
  api.openCollection('saved','zh');await flush();
  const body=elements['xt-content'].children[0].children[0].children[0].children[1];
  assert.equal(body.children[2].hidden,true);
  notify({type:'post',id:'200',translation:'Chrome 的中文',translationSource:'chrome'});
- assert.equal(body.children[2].hidden,false);assert.equal(body.children[2].children[0].textContent,'Chrome 的中文');
+ assert.equal(body.children[2].hidden,true);assert.equal(body.children[2].children[0].textContent,'Chrome 的中文');
  const footer=body.children.find(n=>n.className==='x-post-footer');
- await footer.children.find(n=>n.className==='x-post-actions').children[1].handlers.click();assert.equal(exported,'Chrome 的中文');
+ const actions=footer.children.find(n=>n.className==='x-post-actions');
+ await actions.children[1].handlers.click();assert.equal(exported,'');
+ await actions.children[0].handlers.click();assert.equal(body.children[2].hidden,false);
+ await actions.children[1].handlers.click();assert.equal(exported,'Chrome 的中文');
  assert.equal(elements['xt-content'].children[0].children[0].children.length,1);
+});
+
+function swipeTouch(root, dx, dy = 0, options = {}) {
+  const point = (x, y) => ({identifier: 1, clientX: x, clientY: y});
+  root.handlers.touchstart({touches: [point(20, 160)], timeStamp: 0, target: options.target});
+  root.handlers.touchmove({touches: [point(20 + dx, 160 + dy)], timeStamp: 100, cancelable: true, preventDefault() {}});
+  root.handlers[options.cancel ? 'touchcancel' : 'touchend']({changedTouches: [point(20 + dx, 160 + dy)], timeStamp: options.duration ?? 200, target: options.target});
+}
+
+test('right swipe returns from the reader and ignores short, left, diagonal, slow and cancelled swipes', () => {
+  const {api, elements} = reader();
+  const root = elements['xt-content'];
+  for (const [dx, dy, options] of [[40,0,{}],[-120,0,{}],[100,100,{}],[120,0,{duration:1500}],[120,0,{cancel:true}]]) {
+    api.open({handle:'someone'},false,'en');
+    swipeTouch(root,dx,dy,options);
+    assert.equal(api.active(),true);
+  }
+  swipeTouch(root,120,12);
+  assert.equal(api.active(),false);
+});
+
+test('trackpad right swipe accumulates across events while vertical scrolling and zoom do not navigate', () => {
+  const {api,elements} = reader();
+  const root = elements['xt-content'];
+  const wheel = (dx,dy,time,ctrlKey=false) => root.handlers.wheel({deltaX:dx,deltaY:dy,timeStamp:time,ctrlKey,cancelable:true,preventDefault(){}});
+  api.open({handle:'someone'},false,'en');
+  wheel(-120,0,0,true);
+  wheel(-20,80,500);
+  wheel(-120,0,520); // Once a gesture starts vertically it stays vertical.
+  assert.equal(api.active(),true);
+  wheel(-40,1,1000);wheel(-40,1,1050);
+  assert.equal(api.active(),true);
+  wheel(-40,1,1100);
+  assert.equal(api.active(),false);
+});
+
+test('swipes do not navigate through controls, selected text, dialogs or the saved collection', () => {
+  const {api,elements,ctx} = reader();
+  const root = elements['xt-content'];
+  api.open({handle:'someone'},false,'en');
+  swipeTouch(root,120,0,{target:{closest:()=>({})}});
+  assert.equal(api.active(),true);
+  ctx.window.getSelection = () => ({toString:()=> 'selected text'});
+  swipeTouch(root,120);
+  assert.equal(api.active(),true);
+  ctx.window.getSelection = () => ({toString:()=> ''});
+  ctx.document.querySelector = selector => selector === 'dialog[open]' ? {} : null;
+  swipeTouch(root,120);
+  assert.equal(api.active(),true);
+  ctx.document.querySelector = () => null;
+  api.openCollection('saved','en');
+  swipeTouch(root,120);
+  assert.equal(api.active(),true);
+});
+
+test('multi-touch and account changes cancel an in-progress return gesture', () => {
+  const {api,elements} = reader();const root=elements['xt-content'];
+  const point={identifier:1,clientX:20,clientY:100};
+  const end={changedTouches:[{...point,clientX:150}],timeStamp:200};
+  api.open({handle:'first'},false,'en');
+  root.handlers.touchstart({touches:[point],timeStamp:0});
+  root.handlers.touchmove({touches:[point,{...point,identifier:2}]});
+  root.handlers.touchend(end);
+  assert.equal(api.active(),true);
+  root.handlers.touchstart({touches:[point],timeStamp:0});
+  api.open({handle:'second'},false,'en');
+  root.handlers.touchend(end);
+  assert.equal(api.active(),true);
+  root.handlers.wheel({deltaX:-70,timeStamp:0});
+  api.open({handle:'third'},false,'en');
+  root.handlers.wheel({deltaX:-50,timeStamp:50});
+  assert.equal(api.active(),true);
+});
+
+test('a vertical touch gesture still loads an older batch without returning',async()=>{
+  const {api,elements,pending}=reader();const root=elements['xt-content'];
+  api.open({handle:'someone'},false,'en');
+  pending[0].resolve({tweets:[{id:'200',time:new Date().toISOString(),text:'Latest',media:[]}],cursor:'199'});
+  await flush();root.scrollTop=450;
+  swipeTouch(root,5,-80);
+  assert.equal(api.active(),true);
+  assert.equal(pending[1].request.cursor,'199');
+  assert.equal(pending[1].request.limit,5);
 });
