@@ -727,11 +727,15 @@ select {
 .x-post-original:hover { color: #1d9bf0; }
 .x-post-video { display: block; padding: 24px; background: #f7f9f9; color: #1d9bf0; text-align: center; text-decoration: none; border: 1px solid #cfd9de; border-radius: 16px; margin: 10px 0; }
 .x-reader-status { color: #536471; text-align: center; font-size: 13px; line-height: 1.5; padding: 0 16px; margin: 16px 0 8px; }
-.x-reader-button { border: 1px solid #cfd9de; border-radius: 20px; padding: 8px 16px; background: #fff; color: #0f1419; cursor: pointer; font: inherit; font-weight: 600; font-size: 13px; }
-.x-reader-button:hover { background: #eff3f4; }
-.x-reader-button:disabled { opacity: .6; cursor: wait; }
-.x-reader-more { display: block; margin: 12px auto 24px; }
+.x-reader-button { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; min-width: 72px; border: 0; border-radius: 8px; padding: 8px 14px; background: transparent; color: #1d9bf0; cursor: pointer; font: inherit; font-weight: 500; font-size: 13px; line-height: 20px; transition: background .15s ease, color .15s ease; }
+.x-reader-button:hover:not(:disabled) { background: #e8f5fd; color: #1684cd; }
+.x-reader-button:active:not(:disabled) { background: #dceffc; }
+.x-reader-button:disabled { color: #536471; cursor: wait; }
+.x-reader-button:disabled::before { content: ''; width: 12px; height: 12px; box-sizing: border-box; border: 1.5px solid #d5e2eb; border-top-color: #1d9bf0; border-radius: 50%; animation: x-reader-spin .75s linear infinite; }
+.x-reader-more { width: fit-content; margin: 6px auto 16px; }
 .x-reader-more[hidden] { display: none; }
+@keyframes x-reader-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .x-reader-button { transition: none; } .x-reader-button:disabled::before { animation: none; } }
 .x-reader-back:focus-visible, .x-reader-button:focus-visible, .x-post-original:focus-visible { outline: 2px solid #1d9bf0; outline-offset: 2px; }
 @media (max-width: 340px) { .x-reader-post { padding: 12px 10px; gap: 8px; } .x-post-avatar { width: 34px; height: 34px; } .x-post-top { flex-wrap: wrap; gap: 3px; } }
 
