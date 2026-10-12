@@ -32,3 +32,11 @@ test('missing Chrome API, empty input and empty output are explicit errors',asyn
  await assert.rejects(tools(undefined).translate({text:' '}),/没有可翻译/);
  await assert.rejects(tools({create:async()=>({translate:async()=> ' '})}).translate(tweet),/未返回译文/);
 });
+
+test('long-post translation initializes during the click and translates the prepared full text',async()=>{
+ let created=false,release,received;
+ const post={text:'Short preview'};
+ const api=tools({create(){created=true;return Promise.resolve({translate:async text=>{received=text;return '完整译文';}});}});
+ const pending=api.translate(post,()=>{},{prepare:()=>new Promise(resolve=>{release=()=>{post.text='Complete original including the final paragraph';resolve();};})});
+ assert.equal(created,true);assert.equal(received,undefined);release();assert.equal(await pending,'完整译文');assert.equal(received,post.text);
+});

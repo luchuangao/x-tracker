@@ -107,7 +107,7 @@ test('a latest post older than 24h is displayed and wheel loads more in a short 
   assert.equal(pending.length, 2);
 });
 
-test('translation preserves English and PNG export receives the displayed Chinese', async () => {
+test('card preview receives the current interface language and only the displayed translation', async () => {
   const { api, elements, pending, ctx } = reader();
   let saved;
   ctx.window.xPostTools = { translate: async () => '中文译文', preview: async (tweet, chinese, handle, options) => { saved = { tweet, chinese, options }; } };
@@ -124,9 +124,12 @@ test('translation preserves English and PNG export receives the displayed Chines
   assert.equal(saved.chinese, '中文译文');
   assert.equal(saved.tweet.text, 'Original English');
   assert.equal(saved.options.style, 'mist');
+  assert.equal(saved.options.lang, 'en');
+  api.setLanguage('zh');
   await actions.children[0].handlers.click();
   await actions.children[1].handlers.click();
   assert.equal(saved.chinese, '');
+  assert.equal(saved.options.lang, 'zh');
 });
 
 test('scraper returns ready text immediately and captures available author/media assets', async () => {
@@ -462,4 +465,127 @@ test('a vertical touch gesture still loads an older batch without returning',asy
   assert.equal(api.active(),true);
   assert.equal(pending[1].request.cursor,'199');
   assert.equal(pending[1].request.limit,5);
+});
+
+test('full-post requests use an inactive exact detail page and reject incomplete or mismatched results',async()=>{
+ const {ctx,calls}=background();let script;
+ ctx.chrome.scripting.executeScript=async options=>{
+  if(options.files)return [];if(options.func.name==='xReaderDocumentReady')return [{result:true}];
+  script=options;return [{result:{tweets:[{id:'200',handle:'someone',text:'Complete post',textComplete:true}]}}];
+ };
+ assert.equal((await ctx.readXFullPost({handle:'someone',id:'200'})).tweet.text,'Complete post');
+ assert.equal(calls[0].url,'https://x.com/someone/status/200');assert.equal(calls[0].active,false);
+ assert.equal(script.args[2],'200');assert.equal(calls.at(-1).removed,12);
+ await assert.rejects(ctx.readXFullPost({handle:'someone',id:'not-an-id'}),/Invalid/);
+ ctx.chrome.scripting.executeScript=async options=>options.files?[]:options.func.name==='xReaderDocumentReady'?[{result:true}]:[{result:{tweets:[{id:'200',handle:'other',text:'Wrong author',textComplete:true}]}}];
+ await assert.rejects(ctx.readXFullPost({handle:'someone',id:'200'}),/full post/);
+ assert.equal(calls.at(-1).removed,12);
+});
+
+test('scraper marks timeline truncation and detail expansion selects the exact post, not thread replies',async()=>{
+ let expanded=false,clicks=0;
+ const control={getAttribute:()=> 'tweet-text-show-more-link',innerText:'Show more',closest:()=>null,click(){expanded=true;clicks++;}};
+ const article=(id)=>({
+  querySelector(selector){
+   if(selector==='time')return {dateTime:'2026-10-12T01:00:00Z',closest:()=>({getAttribute:()=>`/someone/status/${id}`})};
+   if(selector==='[data-testid="tweetText"]')return {innerText:expanded?'Complete main post with its final paragraph.':'Short preview'};
+   return null;
+  },
+  querySelectorAll(selector){return selector.includes('show-more')&&!expanded?[control]:[];}
+ });
+ const ctx=vm.createContext({chrome:{runtime:{onMessage:{addListener(){}}}},document:{querySelector:()=>null,querySelectorAll:()=>[article('201'),article('200')]},location:{pathname:'/someone/status/200',origin:'https://x.com'},URL,Date,setTimeout:fn=>fn()});
+ vm.runInContext(source('x-reader-background.js'),ctx);
+ const preview=await ctx.scrapeXReaderPage('someone',1);assert.equal(preview.tweets[0].textTruncated,true);assert.equal(preview.tweets[0].textComplete,false);
+ const full=await ctx.scrapeXReaderPage('someone',1,'200');assert.equal(full.tweets[0].id,'200');assert.equal(full.tweets[0].textComplete,true);
+ assert.match(full.tweets[0].text,/final paragraph/);assert.equal(clicks,1);
+});
+
+test('full text is prepared during rendering and expansion only toggles local content',async()=>{
+ const {api,elements,pending,ctx}=reader();
+ api.open({handle:'someone'},false,'zh');
+ pending[0].resolve({tweets:[{id:'200',handle:'someone',time:new Date().toISOString(),text:'Preview only',textTruncated:true,media:[]}]});await flush();
+ const body=elements['xt-content'].children[0].children[1].children[0].children[1];const expand=body.children[3];let cached;
+ ctx.window.xPostStore={remember:async tweet=>{cached={...tweet};return cached;}};
+ assert.equal(expand.hidden,true);assert.equal(pending[1].request.action,'X_READER_FULL_POST');
+ await expand.handlers.click();assert.equal(pending.length,2);
+ const full='Full paragraph. '.repeat(50);
+ pending[1].resolve({tweet:{id:'200',handle:'someone',text:full,textComplete:true}});await flush();
+ assert.equal(body.children[1].textContent,full);assert.equal(cached.text,full);assert.equal(cached.textComplete,true);
+ assert.equal(expand.hidden,false);assert.equal(expand.textContent,'展开全文');
+ await expand.handlers.click();assert.equal(expand.textContent,'收起');
+ await expand.handlers.click();assert.equal(expand.textContent,'展开全文');
+ await expand.handlers.click();assert.equal(pending.length,2);
+ api.setLanguage('en');assert.equal(expand.textContent,'Show less');
+});
+
+test('failed automatic preparation has a separate retry and late results cannot replace another account',async()=>{
+ const {api,elements,pending}=reader();api.open({handle:'someone'},false,'en');
+ pending[0].resolve({tweets:[{id:'200',handle:'someone',time:new Date().toISOString(),text:'Preview',textTruncated:true,media:[]}]});await flush();
+ const body=elements['xt-content'].children[0].children[1].children[0].children[1],expand=body.children[3],retry=body.children[4];
+ pending[1].resolve({error:'Network failed'});await flush();
+ assert.equal(body.children[1].textContent,'Preview');assert.equal(expand.hidden,true);assert.equal(retry.hidden,false);
+ await expand.handlers.click();assert.equal(pending.length,2);
+ retry.handlers.click();assert.equal(retry.hidden,true);api.open({handle:'other'},false,'en');
+ pending[2].resolve({tweet:{id:'200',handle:'someone',text:'Late full text',textComplete:true}});await flush();
+ assert.equal(body.children[1].textContent,'Preview');
+ pending[3].resolve({tweets:[{id:'300',handle:'other',time:new Date().toISOString(),text:'Other post',media:[]}]});await flush();
+ assert.equal(elements['xt-content'].children[0].children[1].children[0].children[1].children[1].textContent,'Other post');
+});
+
+test('full-post jobs reuse the durable cache, merge concurrent reads and persist completed text',async()=>{
+ const {ctx,calls}=background();let release,writes=0;
+ ctx.xPostStore={get:async()=>({id:'200',handle:'someone',text:'Cached full post',textComplete:true}),remember:async tweet=>{writes++;return tweet;}};
+ assert.equal((await ctx.readXFullPost({handle:'someone',id:'200'})).tweet.text,'Cached full post');assert.equal(calls.length,0);
+ ctx.xPostStore.get=async()=>null;
+ ctx.chrome.scripting.executeScript=async options=>options.files?[]:options.func.name==='xReaderDocumentReady'?[{result:true}]:new Promise(resolve=>{release=()=>resolve([{result:{tweets:[{id:'200',handle:'someone',text:'Fresh full body',textComplete:true}]}}]);});
+ const first=ctx.readXFullPost({handle:'someone',id:'200'}),second=ctx.readXFullPost({handle:'someone',id:'200'});await flush();
+ assert.equal(calls.filter(call=>call.url).length,1);release();
+ const results=await Promise.all([first,second]);assert.equal(results[0].tweet.text,results[1].tweet.text);assert.equal(writes,1);
+});
+
+test('automatic full-post fetching limits parallel detail tabs to two',async()=>{
+ const {ctx,calls}=background();const gates=[];
+ ctx.chrome.scripting.executeScript=async options=>options.files?[]:options.func.name==='xReaderDocumentReady'?[{result:true}]:new Promise(resolve=>gates.push(()=>resolve([{result:{tweets:[{id:options.args[2],handle:'someone',text:'Full body',textComplete:true}]}}])));
+ const jobs=['200','201','202'].map(id=>ctx.readXFullPost({handle:'someone',id}));await flush();
+ assert.equal(calls.filter(call=>call.url).length,2);assert.equal(gates.length,2);
+ gates[0]();await flush();assert.equal(calls.filter(call=>call.url).length,3);assert.equal(gates.length,3);
+ gates[1]();gates[2]();await Promise.all(jobs);assert.equal(calls.filter(call=>call.removed).length,3);
+});
+
+test('edited detail posts without an own time element use their history link and cached timestamp, excluding quote dates',async()=>{
+ const expectedTime='2026-10-12T01:00:00Z';
+ const quoteContainer={matches:()=>true};
+ const quotedLink={getAttribute:()=>'/someone/status/100',closest:()=>quoteContainer};
+ const quoteTime={dateTime:'2026-04-10T01:00:00Z',closest:selector=>selector==='a'?quotedLink:quoteContainer};
+ const history={getAttribute:()=>'/someone/status/200/history',closest:()=>null};
+ const analytics={getAttribute:()=>'/someone/status/200/analytics',closest:()=>null};
+ const article={
+  querySelector(selector){if(selector==='time')return quoteTime;if(selector==='[data-testid="tweetText"]')return {innerText:'Full edited post including its final paragraph.'};return null;},
+  querySelectorAll(selector){if(selector==='time')return [quoteTime];if(selector==='a[href*="/status/"]')return [quotedLink,history,analytics];return [];}
+ };
+ const ctx=vm.createContext({chrome:{runtime:{onMessage:{addListener(){}}}},document:{querySelector:()=>null,querySelectorAll:()=>[article]},location:{pathname:'/someone/status/200',origin:'https://x.com'},URL,Date,setTimeout:fn=>fn()});
+ vm.runInContext(source('x-reader-background.js'),ctx);
+ const result=await ctx.scrapeXReaderPage('someone',1,'200',expectedTime);
+ assert.equal(result.tweets.length,1);assert.equal(result.tweets[0].id,'200');assert.equal(result.tweets[0].time,expectedTime);assert.equal(result.tweets[0].textComplete,true);
+ const wrong=await ctx.scrapeXReaderPage('someone',1,'100',expectedTime);assert.ok(wrong.error);
+});
+
+test('detail reading supplies the cached preview date when edited metadata has no time tag',async()=>{
+ const {ctx}=background();const expectedTime='2026-10-12T01:00:00Z';let supplied;
+ ctx.xPostStore={get:async()=>({id:'200',handle:'someone',time:expectedTime,text:'Preview',textTruncated:true}),remember:async tweet=>tweet};
+ ctx.chrome.scripting.executeScript=async options=>{
+  if(options.files)return [];if(options.func.name==='xReaderDocumentReady')return [{result:true}];
+  supplied=options.args[3];return [{result:{tweets:[{id:'200',handle:'someone',time:supplied,text:'Complete edited post',textComplete:true}]}}];
+ };
+ const result=await ctx.readXFullPost({handle:'someone',id:'200'});assert.equal(supplied,expectedTime);assert.equal(result.tweet.time,expectedTime);
+});
+
+test('ordinary date links with role=link remain valid metadata, while div quote links are excluded',async()=>{
+ const ordinary={getAttribute:()=>'/someone/status/200/history',closest:selector=>selector.includes('div[role="link"]')?null:ordinary,matches:selector=>!selector.includes('div[role="link"]')};
+ const quote={matches:()=>true};
+ const quoted={getAttribute:()=>'/someone/status/100/history',closest:()=>quote};
+ const article={querySelector:selector=>selector==='[data-testid="tweetText"]'?{innerText:'Full post final paragraph.'}:null,querySelectorAll:selector=>selector==='a[href*="/status/"]'?[quoted,ordinary]:[]};
+ const ctx=vm.createContext({chrome:{runtime:{onMessage:{addListener(){}}}},document:{querySelector:()=>null,querySelectorAll:()=>[article]},location:{pathname:'/someone/status/200',origin:'https://x.com'},URL,Date,setTimeout:fn=>fn()});
+ vm.runInContext(source('x-reader-background.js'),ctx);
+ const result=await ctx.scrapeXReaderPage('someone',1,'200','2026-10-12T01:00:00Z');assert.equal(result.tweets[0].id,'200');assert.equal(result.tweets[0].textComplete,true);
 });

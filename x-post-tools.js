@@ -1,4 +1,4 @@
-// Chrome's built-in Translator API and local PNG export.
+// Chrome's built-in Translator API and local card image export.
 window.xPostTools = (() => {
   let translatorPromise;
   const frameStyles = [
@@ -19,10 +19,13 @@ window.xPostTools = (() => {
     }
     return translatorPromise;
   }
-  async function translate(tweet, progress = () => {}) {
-    const text = typeof tweet === 'string' ? tweet : tweet?.text;
+  async function translate(tweet, progress = () => {}, options = {}) {
+    let text = typeof tweet === 'string' ? tweet : tweet?.text;
     if (!text?.trim()) throw new Error('这条推文没有可翻译的正文。');
-    const engine = await translator(progress);
+    // Initialize in the click handler before any full-post retrieval awaits.
+    const [engine] = await Promise.all([translator(progress), options.prepare?.()]);
+    text = typeof tweet === 'string' ? tweet : tweet?.text;
+    if (!text?.trim()) throw new Error('这条推文没有可翻译的正文。');
     progress('正在翻译…');
     const result = await engine.translate(text);
     if (!result?.trim()) throw new Error('Chrome 未返回译文，请重试。');
@@ -218,37 +221,51 @@ window.xPostTools = (() => {
     await downloadBlob(await card(tweet, chinese, fallbackName, options), tweet, fallbackName, style);
   }
   async function preview(tweet, chinese, fallbackName, options = {}) {
+    const lang = options.lang === 'zh' ? 'zh' : 'en';
+    const t = lang === 'zh' ? {
+      title: '卡片预览', close: '关闭预览', zoomIn: '放大预览', zoomOut: '缩小预览',
+      image: '推文卡片预览', frame: '卡片边框', copy: '复制', copying: '复制中…', copied: '已复制',
+      copyError: '复制失败，请重试。', renderError: '卡片生成失败，请重新选择边框重试。',
+      frames: frameStyles.map(style => style.name)
+    } : {
+      title: 'Card preview', close: 'Close preview', zoomIn: 'Zoom in', zoomOut: 'Zoom out',
+      image: 'Post card preview', frame: 'Card border', copy: 'Copy', copying: 'Copying…', copied: 'Copied',
+      copyError: 'Could not copy the image. Please try again.', renderError: 'Could not generate the card. Select a border to try again.',
+      frames: ['Soft mist', 'Ivory paper', 'Glacier blue', 'Bamboo green', 'Midnight blue', 'Plain white']
+    };
     const dialog = document.createElement('dialog');
     dialog.className = 'x-card-preview';
-    dialog.setAttribute('aria-label', '卡片预览');
+    dialog.lang = lang;
+    dialog.setAttribute('aria-label', t.title);
     const header = document.createElement('div'); header.className = 'x-preview-header';
-    const title = document.createElement('strong'); title.textContent = '卡片预览';
+    const title = document.createElement('strong'); title.textContent = t.title;
     const close = document.createElement('button'); close.textContent = '×'; close.className = 'x-icon-button';
-    close.setAttribute('aria-label', '关闭预览'); close.title = '关闭';
+    close.setAttribute('aria-label', t.close); close.title = t.close;
     const controls = document.createElement('div'); controls.className = 'x-preview-controls';
     const zoom = document.createElement('button'); zoom.className = 'x-icon-button';
-    zoom.setAttribute('aria-label', '放大预览'); zoom.setAttribute('aria-pressed', 'false');
+    zoom.setAttribute('aria-label', t.zoomIn); zoom.setAttribute('aria-pressed', 'false');
     zoom.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6M7 10h6m-3-3v6"/></svg>';
     controls.append(zoom, close); header.append(title, controls);
     const stage = document.createElement('div'); stage.className = 'x-preview-stage';
-    const image = document.createElement('img'); image.alt = '即将保存的推文卡片'; stage.append(image);
+    const image = document.createElement('img'); image.alt = t.image; stage.append(image);
     const footer = document.createElement('div'); footer.className = 'x-preview-footer';
-    const select = document.createElement('select'); select.setAttribute('aria-label', '卡片边框');
-    for (const style of frameStyles) {
-      const option = document.createElement('option'); option.value = style.id; option.textContent = style.name; select.append(option);
+    const select = document.createElement('select'); select.setAttribute('aria-label', t.frame);
+    for (const [index, style] of frameStyles.entries()) {
+      const option = document.createElement('option'); option.value = style.id; option.textContent = t.frames[index]; select.append(option);
     }
     select.value = frameStyles.some(style => style.id === options.style) ? options.style : 'mist';
-    const download = document.createElement('button'); download.className = 'x-preview-download'; download.textContent = '保存 PNG';
-    footer.append(select, download);
+    const copy = document.createElement('button'); copy.className = 'x-preview-copy'; copy.textContent = t.copy;
+    copy.setAttribute('aria-live', 'polite');
+    footer.append(select, copy);
     const error = document.createElement('div'); error.className = 'x-preview-error'; error.setAttribute('role', 'status');
     dialog.append(header, stage, error, footer); document.body.append(dialog);
     const finished = new Promise(resolve => dialog.addEventListener('close', resolve, {once: true}));
     zoom.addEventListener('click', () => {
       const expanded = stage.classList.toggle('x-preview-zoomed');
       zoom.setAttribute('aria-pressed', String(expanded));
-      zoom.setAttribute('aria-label', expanded ? '缩小预览' : '放大预览');
+      zoom.setAttribute('aria-label', expanded ? t.zoomOut : t.zoomIn);
     });
-    let generation = 0, currentBlob = null, imageUrl = null, disposed = false;
+    let generation = 0, currentBlob = null, imageUrl = null, disposed = false, copyTimer;
     close.addEventListener('click', () => dialog.close());
     dialog.addEventListener('click', event => { if (event.target === dialog) {
       const bounds = dialog.getBoundingClientRect();
@@ -256,23 +273,31 @@ window.xPostTools = (() => {
     } });
     async function render() {
       const token = ++generation, style = select.value;
-      download.disabled = true; error.textContent = ''; stage.setAttribute('aria-busy', 'true');
+      clearTimeout(copyTimer); copy.textContent = t.copy;
+      currentBlob = null; copy.disabled = true; error.textContent = ''; stage.setAttribute('aria-busy', 'true');
       try {
         const blob = await card(tweet, chinese, fallbackName, {style});
         if (disposed || token !== generation) return;
         if (imageUrl) URL.revokeObjectURL(imageUrl);
         currentBlob = blob; imageUrl = URL.createObjectURL(blob); image.src = imageUrl;
-        download.disabled = false;
-      } catch (failure) { if (!disposed && token === generation) error.textContent = failure.message; }
+        copy.disabled = false;
+      } catch (failure) { if (!disposed && token === generation) error.textContent = t.renderError; }
       finally { if (!disposed && token === generation) stage.setAttribute('aria-busy', 'false'); }
     }
     select.addEventListener('change', () => { options.onStyleChange?.(select.value); render(); });
-    download.addEventListener('click', async () => {
-      if (!currentBlob || download.disabled) return;
-      download.disabled = true; select.disabled = true; error.textContent = '';
-      try { await downloadBlob(currentBlob, tweet, fallbackName, select.value); }
-      catch (failure) { if (!disposed) error.textContent = failure.message; }
-      finally { if (!disposed) { download.disabled = false; select.disabled = false; } }
+    copy.addEventListener('click', async () => {
+      if (!currentBlob || copy.disabled) return;
+      clearTimeout(copyTimer);
+      copy.disabled = true; select.disabled = true; error.textContent = ''; copy.textContent = t.copying;
+      try {
+        // Copy the exact rendered image while the click still has user activation.
+        await navigator.clipboard.write([new ClipboardItem({[currentBlob.type]: currentBlob})]);
+        if (!disposed) {
+          copy.textContent = t.copied;
+          copyTimer = setTimeout(() => { copy.textContent = t.copy; }, 1800);
+        }
+      } catch (failure) { if (!disposed) { copy.textContent = t.copy; error.textContent = t.copyError; } }
+      finally { if (!disposed) { copy.disabled = false; select.disabled = false; } }
     });
     try {
       dialog.showModal();
@@ -280,6 +305,7 @@ window.xPostTools = (() => {
       await finished;
     } finally {
       disposed = true; generation++;
+      clearTimeout(copyTimer);
       if (imageUrl) URL.revokeObjectURL(imageUrl);
       dialog.remove();
     }

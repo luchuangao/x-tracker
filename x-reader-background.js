@@ -1,14 +1,47 @@
 // Isolated page requests: no shared tweet cache or persistent scraper tabs.
 chrome.runtime.onMessage.addListener((request, sender, respond) => {
   if (sender.id !== chrome.runtime.id) return;
-  if (!['X_READER_PAGE','X_READER_AVATAR','X_READER_AVATAR_WARM'].includes(request.action)) return;
-  const job = request.action === 'X_READER_AVATAR_WARM' ? warmXAvatar(request.handle,request.source) : request.action === 'X_READER_AVATAR' ? repairXAvatar(request.handle) : readXPage(request);
+  if (!['X_READER_PAGE','X_READER_FULL_POST','X_READER_AVATAR','X_READER_AVATAR_WARM'].includes(request.action)) return;
+  const job = request.action === 'X_READER_FULL_POST' ? readXFullPost(request) : request.action === 'X_READER_AVATAR_WARM' ? warmXAvatar(request.handle,request.source) : request.action === 'X_READER_AVATAR' ? repairXAvatar(request.handle) : readXPage(request);
   job.then(respond, error => respond({ error: error.message }));
   return true;
 });
 
-async function readXPage({ handle, cursor, replies, limit }) {
-  if (!/^[A-Za-z0-9_]{1,15}$/.test(handle) || (cursor && !/^\d{1,25}$/.test(cursor))) {
+const xFullPostJobs = new Map(), xFullPostQueue = [];
+let xFullPostActive = 0;
+function drainXFullPosts() {
+  while (xFullPostActive < 2 && xFullPostQueue.length) {
+    const job = xFullPostQueue.shift(); xFullPostActive++;
+    Promise.resolve().then(job.run).then(job.resolve, job.reject).finally(() => {
+      xFullPostActive--; drainXFullPosts();
+    });
+  }
+}
+async function readXFullPost({handle, id}) {
+  if (!/^[A-Za-z0-9_]{1,15}$/.test(handle || '') || !/^\d{1,25}$/.test(String(id || ''))) throw Error('Invalid X post ID or username.');
+  const cached = await globalThis.xPostStore?.get(String(id)).catch(() => null);
+  if (cached?.textComplete && !cached.textTruncated && cached.handle === handle.toLowerCase()) return {tweet:cached};
+  const key = `${handle.toLowerCase()}/${id}`;
+  if (!xFullPostJobs.has(key)) {
+    const job = new Promise((resolve, reject) => {
+      xFullPostQueue.push({resolve, reject, run:async () => {
+        const response = await readXPage({handle, postId:String(id), fallbackTime:cached?.time || ''});
+        if (response.error) throw Error(response.error);
+        let tweet = response.tweets?.find(post => post.id === String(id) && post.handle?.toLowerCase() === handle.toLowerCase());
+        if (!tweet?.textComplete || tweet.textTruncated || !tweet.text) throw Error('X did not return the full post. Please retry.');
+        if (globalThis.xPostStore) {
+          try { tweet = await xPostStore.remember(tweet); } catch (_) { /* Keep the readable full body; the panel retries persistence. */ }
+        }
+        return {tweet};
+      }});
+      drainXFullPosts();
+    }).finally(() => xFullPostJobs.delete(key));
+    xFullPostJobs.set(key, job);
+  }
+  return xFullPostJobs.get(key);
+}
+async function readXPage({ handle, cursor, replies, limit, postId, fallbackTime = '' }) {
+  if (!/^[A-Za-z0-9_]{1,15}$/.test(handle) || (cursor && !/^\d{1,25}$/.test(cursor)) || (postId && !/^\d{1,25}$/.test(postId))) {
     throw new Error('Invalid X username or cursor.');
   }
   let query = `from:${handle}`;
@@ -16,7 +49,7 @@ async function readXPage({ handle, cursor, replies, limit }) {
   if (cursor) query += ` max_id:${cursor}`;
   let tab;
   try {
-    tab = await chrome.tabs.create({ url: `https://x.com/search?q=${encodeURIComponent(query)}&f=live`, active: false });
+    tab = await chrome.tabs.create({ url: postId ? `https://x.com/${handle}/status/${postId}` : `https://x.com/search?q=${encodeURIComponent(query)}&f=live`, active: false });
     let loaded = false;
     for (let i = 0; i < 50; i++) {
       const info = await chrome.tabs.get(tab.id);
@@ -32,7 +65,7 @@ async function readXPage({ handle, cursor, replies, limit }) {
     if (!loaded) throw new Error('X page timed out. Please retry.');
     const count=cursor ? Math.min(5,Math.max(1,Math.floor(Number(limit)||5))) : 1;
     await chrome.scripting.executeScript({target:{tabId:tab.id},injectImmediately:true,files:['x-native-translation.js']});
-    const [execution] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, injectImmediately:true, func: scrapeXReaderPage, args: [handle, count] });
+    const [execution] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, injectImmediately:true, func: scrapeXReaderPage, args: [handle, postId ? 1 : count, postId || '', fallbackTime] });
     if (!execution?.result) throw new Error('Could not read X. Please retry.');
     const result = execution.result;
     if (Array.isArray(result.tweets) && result.tweets.length) {
@@ -139,8 +172,9 @@ function xAvatarCacheSource(value) {
   } catch (_) { return false; }
 }
 
-async function scrapeXReaderPage(handle, limit) {
+async function scrapeXReaderPage(handle, limit, postId = '', fallbackTime = '') {
   const posts = new Map();
+  const expandedControls = new WeakSet();
   let ready = false, assetGrace=false;
   for (let pass = 0; pass < 50; pass++) {
     let pendingMedia=false;
@@ -152,11 +186,35 @@ async function scrapeXReaderPage(handle, limit) {
     }
     const articles = document.querySelectorAll('article[data-testid="tweet"]');
     for (const article of articles) {
-      const time = article.querySelector('time');
-      const link = time?.closest('a');
-      const href = link?.getAttribute('href');
-      const match = href ? new URL(href, location.origin).pathname.match(/^\/([^/]+)\/status\/(\d+)/) : null;
-      if (!match || match[1].toLowerCase() !== handle.toLowerCase()) continue;
+      const excluded = '[data-testid="quoteTweet"], div[role="link"], [data-testid="tweetText"]';
+      const ownMetadata = node => {
+        const parent = node?.closest?.(excluded);
+        return !parent?.matches?.(excluded);
+      };
+      const times = Array.from(article.querySelectorAll('time'));
+      if (!times.length && article.querySelector('time')) times.push(article.querySelector('time'));
+      const ownTimes = times.filter(ownMetadata);
+      // Edited detail posts use /history for their date and may have no <time>.
+      // A quoted post's timestamp must never identify the enclosing post.
+      const links = [...ownTimes.map(node => node.closest('a')).filter(Boolean), ...Array.from(article.querySelectorAll('a[href*="/status/"]')).filter(ownMetadata)];
+      const identities = links.map(link => {
+        try { const match = new URL(link.getAttribute('href'), location.origin).pathname.match(/^\/([^/]+)\/status\/(\d+)(?:\/|$)/); return match ? {match, link} : null; }
+        catch (_) { return null; }
+      }).filter(Boolean);
+      const identity = identities.find(item => item.match[1].toLowerCase() === handle.toLowerCase() && (!postId || item.match[2] === postId));
+      if (!identity) continue;
+      const {match} = identity;
+      const time = ownTimes.find(node => node.closest('a')?.getAttribute('href') === identity.link.getAttribute('href')) || ownTimes[0];
+      const timestamp = time?.dateTime || (postId ? fallbackTime : '');
+      const showMore = Array.from(article.querySelectorAll('[data-testid="tweet-text-show-more-link"], button, [role="button"], a')).find(node =>
+        !node.closest?.('[data-testid="quoteTweet"], [role="link"]') &&
+        (node.getAttribute('data-testid') === 'tweet-text-show-more-link' || /^(show more|read more|显示更多|展示更多|查看更多|展开全文)$/i.test((node.innerText || node.textContent || '').trim())));
+      if (postId && showMore) {
+        // Detail layouts may still require an explicit expansion. Never click
+        // controls belonging to quoted posts or another post in the thread.
+        if (!expandedControls.has(showMore)) { expandedControls.add(showMore); showMore.click(); }
+        pendingMedia = true; continue;
+      }
       let native = typeof xNativeText==='function' ? xNativeText(article) : {};
       const text = native.text ?? article.querySelector('[data-testid="tweetText"]')?.innerText ?? '';
       const user = article.querySelector('[data-testid="User-Name"]');
@@ -188,7 +246,7 @@ async function scrapeXReaderPage(handle, limit) {
         text: quoteNode.querySelector('[data-testid="tweetText"]')?.innerText || '',
         url: quoteHref ? new URL(quoteHref, location.origin).href : ''
       } : null;
-      posts.set(match[2], { id: match[2], text, language:native.language || '', time: time.dateTime, name, handle, avatar, avatarOwner, verified, metrics, quote,
+      posts.set(match[2], { id: match[2], text, textTruncated:!!showMore, textComplete:!showMore, language:native.language || '', time: timestamp, name, handle, avatar, avatarOwner, verified, metrics, quote,
         url: `https://x.com/${match[1]}/status/${match[2]}`,
         media: [...new Set(Array.from(article.querySelectorAll('img')).filter(img => !quoteNode?.contains(img) && (img.closest('[data-testid="tweetPhoto"]') || /pbs\.twimg\.com\/media\//.test(img.currentSrc || img.src))).map(img => img.currentSrc || img.src).filter(src => /^https:\/\/pbs\.twimg\.com\//.test(src)))],
         hasVideo: !!article.querySelector('video, [data-testid="videoPlayer"]')

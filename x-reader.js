@@ -8,6 +8,8 @@ window.xReader = (() => {
     zh: { saved:'收藏', noSaved:'暂无收藏', local:'本地缓存', more:'加载', back: '← 返回动态', recent: '最新一条推文', older: '加载', loading: '加载中…', empty: 'X 未返回此用户的推文。', retry: '重试', end: '没有更多可读取的推文', original: '查看原文', hint: '向下滚动加载', error: '获取失败。请确认当前 Chrome 已登录 X，然后重试。' },
     en: { saved:'Saved', noSaved:'No saved posts yet', local:'Local cache', more:'Load', back: '← Back to Feed', recent: 'Latest post', older: 'Load', loading: 'Loading…', empty: 'X returned no posts for this user.', retry: 'Retry', end: 'No more readable posts', original: 'View original', hint: 'Scroll to load', error: 'Could not fetch posts. Check that you are signed in to X in Chrome, then retry.' }
   };
+  Object.assign(words.zh, {expand:'展开全文', collapse:'收起', fullLoading:'加载全文…', fullError:'全文加载失败，请重试。'});
+  Object.assign(words.en, {expand:'Show more', collapse:'Show less', fullLoading:'Loading full post…', fullError:'Could not load the full post. Please try again.'});
   function element(tag, text, className) {
     const node = document.createElement(tag);
     if (text) node.textContent = text;
@@ -220,6 +222,58 @@ window.xReader = (() => {
         let translated = (tweet.translationSource === 'chrome' || !tweet.translationSource) ? tweet.translation || '' : '';
         let translationHiddenByUser = true;
         if (translated) bilingual.append(element('p', translated, 'x-reader-text'));
+        const expand = element('button', '', 'x-post-expand');
+        expand.type = 'button'; expand.hidden = true;
+        expand.setAttribute('aria-expanded', 'false');
+        body.append(expand);
+        const retryFull = element('button', words[current.lang].retry, 'x-post-expand x-post-full-retry');
+        retryFull.type = 'button'; retryFull.hidden = true; body.append(retryFull);
+        let expanded = false, fullRequest = null;
+        const isLong = text => String(text || '').length > 280 || String(text || '').split('\n').length > 7;
+        const needsFullText = () => !tweet.textComplete && (tweet.textTruncated || isLong(tweet.text));
+        function updateExpansion() {
+          const foldable = tweet.textTruncated || isLong(tweet.text) || !bilingual.hidden && isLong(translated);
+          // Only offer expansion when the complete body is already local.
+          expand.hidden = !foldable || needsFullText();
+          expand.textContent = expanded ? words[current.lang].collapse : words[current.lang].expand;
+          expand.setAttribute('aria-expanded', String(expanded));
+          retryFull.textContent = words[current.lang].retry;
+          original.classList.toggle('x-text-collapsed', !!foldable && !expanded);
+          bilingual.classList.toggle('x-translation-collapsed', !!foldable && !expanded);
+        }
+        async function ensureFullText() {
+          if (tweet.textComplete || !tweet.textTruncated && !isLong(tweet.text)) return;
+          if (fullRequest) return fullRequest;
+          fullRequest = (async () => {
+            const response = await chrome.runtime.sendMessage({action:'X_READER_FULL_POST', handle:tweet.handle || current.user.handle, id:tweet.id});
+            const full = response?.tweet;
+            if (!full || response.error || full.id !== tweet.id || full.handle?.toLowerCase() !== (tweet.handle || current.user.handle).toLowerCase() || !full.textComplete || full.textTruncated || !full.text) throw Error(response?.error || words[current.lang].fullError);
+            if (state !== current || !current.savedEntries.has(tweet.id)) return;
+            const changed = full.text !== tweet.text;
+            // Keep hydrated image URLs and the current avatar. Only replace
+            // the verified main body; the detail page may not have its assets yet.
+            tweet.text = full.text; tweet.textComplete = true; tweet.textTruncated = false;
+            original.textContent = full.text;
+            if (changed) {
+              translated = ''; tweet.translation = ''; tweet.translationSource = '';
+              bilingual.replaceChildren(); bilingual.hidden = true; translationHiddenByUser = true;
+              translateButton.setAttribute('aria-pressed', 'false');
+            }
+            if (window.xPostStore) {
+              try { await window.xPostStore.remember(tweet, {replies:current.replies || !!current.collection}); }
+              catch (error) { if (state === current) notice.textContent = current.lang === 'zh' ? '全文已显示，但本地缓存失败。' : 'Full post shown, but local caching failed.'; }
+            }
+          })();
+          expand.disabled = true; updateExpansion();
+          try { await fullRequest; }
+          finally { fullRequest = null; expand.disabled = false; updateExpansion(); }
+        }
+        expand.addEventListener('click', () => {
+          current.interacted = true; notice.textContent = '';
+          if (state !== current || needsFullText()) return;
+          expanded = !expanded; updateExpansion();
+        });
+        updateExpansion();
         const media = element('div', '', 'x-post-media');
         for (const url of (tweet.media || []).slice(0, 4)) {
           const src = safeUrl(url, true);
@@ -294,12 +348,13 @@ window.xReader = (() => {
           notice.textContent = '';
           try {
             const hadTranslation = !!translated;
-            if (!translated) translated = await window.xPostTools.translate({...tweet,handle:tweet.handle || current.user.handle});
+            if (!translated) translated = await window.xPostTools.translate(tweet);
             if (window.xPostStore) await window.xPostStore.translation(tweet.id, translated,{source:'chrome',original:tweet.text});
             bilingual.replaceChildren(element('p', translated, 'x-reader-text'));
             bilingual.hidden = hadTranslation ? !bilingual.hidden : false;
             translationHiddenByUser = bilingual.hidden;
             translateButton.setAttribute('aria-pressed', String(!bilingual.hidden));
+            updateExpansion();
           } catch (error) { notice.textContent = `翻译失败：${error.message}`; }
           finally {
             translateButton.disabled = false;
@@ -311,8 +366,10 @@ window.xReader = (() => {
           saveButton.disabled = true;
           notice.textContent = '';
           try {
+            if (state !== current) return;
             await window.xPostTools.preview(tweet, bilingual.hidden ? '' : translated, current.user.handle, {
               style: preferredFrame,
+              lang: current.lang,
               onStyleChange(style) {
                 preferredFrame = style;
                 chrome.storage?.local?.set({cardFrameStyle: style}).catch(() => {});
@@ -338,8 +395,9 @@ window.xReader = (() => {
           bilingual.replaceChildren(element('p', translated, 'x-reader-text'));
           bilingual.hidden = translationHiddenByUser;
           translateButton.setAttribute('aria-pressed', String(!bilingual.hidden));
+          updateExpansion();
         }
-        current.savedEntries.set(tweet.id, {savedState, article, applyTranslation});
+        current.savedEntries.set(tweet.id, {savedState, article, applyTranslation, updateExpansion});
         savedButton.addEventListener('click', async () => {
           current.interacted = true; savedButton.disabled = true; notice.textContent = '';
           try {
@@ -352,6 +410,24 @@ window.xReader = (() => {
         body.append(notice);
         article.append(avatar, body);
         posts.append(article);
+        async function prepareFullText() {
+          retryFull.hidden = true; notice.textContent = '';
+          translateButton.disabled = true; saveButton.disabled = true;
+          try { await ensureFullText(); }
+          catch (error) {
+            console.warn('X-Tracker full post preparation failed', tweet.id, error.message);
+            if (state === current && current.savedEntries.has(tweet.id)) {
+              notice.textContent = words[current.lang].fullError; retryFull.hidden = false;
+            }
+          } finally {
+            translateButton.disabled = !tweet.text?.trim() || !!needsFullText();
+            saveButton.disabled = !!needsFullText();
+          }
+        }
+        retryFull.addEventListener('click', () => { current.interacted = true; prepareFullText(); });
+        // Start during rendering, independently of pagination and user clicks.
+        // Old cached previews take the same path; complete cached posts skip it.
+        if (needsFullText()) prepareFullText();
       }
     return added;
   }
@@ -490,6 +566,7 @@ window.xReader = (() => {
     state.back.title = t.back; state.back.setAttribute('aria-label', t.back);
     state.backLabel.textContent = t.back.replace(/^←\s*/, '');
     for (const entry of state.timeEntries) entry.time.textContent = shortTime(entry.timestamp, lang);
+    for (const entry of state.savedEntries.values()) entry.updateExpansion?.();
     more.textContent = state.busy ? t.loading : state.failed ? t.retry : state.collection ? t.more : t.older;
     if (!posts.children.length && !state.busy && !state.failed) status.textContent = state.collection ? t.noSaved : t.empty;
   }

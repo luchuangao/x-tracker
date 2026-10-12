@@ -40,7 +40,14 @@ globalThis.xPostStore = (() => {
     if (!/^\d{1,25}$/.test(id) || !/^[a-z0-9_]{1,15}$/.test(handle) || !Number.isFinite(Date.parse(tweet.time))) throw Error('推文数据不完整，无法存入本地');
     const imageUrl=value=>{try{const u=new URL(value);return u.protocol==='https:' && ['pbs.twimg.com','abs.twimg.com'].includes(u.hostname)?u.href:null;}catch{return null;}};
     const media=(tweet.mediaOriginal || tweet.media || []).map(imageUrl).filter(Boolean).slice(0,4);
-    return {id,sortId:id.padStart(25,'0'),handle,time:tweet.time,text:String(tweet.text || ''),language:String(tweet.language || ''),name:String(tweet.name || handle),verified:!!tweet.verified,avatar:imageUrl(tweet.avatarSource || tweet.avatar) || '',media,metrics:{reply:String(tweet.metrics?.reply || ''),retweet:String(tweet.metrics?.retweet || ''),like:String(tweet.metrics?.like || ''),views:String(tweet.metrics?.views || '')},quote:tweet.quote?{name:String(tweet.quote.name || ''),text:String(tweet.quote.text || '')}:null,hasVideo:!!tweet.hasVideo,url:`https://x.com/${handle}/status/${id}`};
+    return {id,sortId:id.padStart(25,'0'),handle,time:tweet.time,text:String(tweet.text || ''),textTruncated:!!tweet.textTruncated,textComplete:tweet.textComplete===true && !tweet.textTruncated,language:String(tweet.language || ''),name:String(tweet.name || handle),verified:!!tweet.verified,avatar:imageUrl(tweet.avatarSource || tweet.avatar) || '',media,metrics:{reply:String(tweet.metrics?.reply || ''),retweet:String(tweet.metrics?.retweet || ''),like:String(tweet.metrics?.like || ''),views:String(tweet.metrics?.views || '')},quote:tweet.quote?{name:String(tweet.quote.name || ''),text:String(tweet.quote.text || '')}:null,hasVideo:!!tweet.hasVideo,url:`https://x.com/${handle}/status/${id}`};
+  }
+  function preserveFullText(snapshot, old) {
+    // Search results and legacy previews must never replace a cached full post.
+    if (!snapshot.textComplete && old?.textComplete && old.handle===snapshot.handle) {
+      snapshot.text=old.text; snapshot.textComplete=true; snapshot.textTruncated=false;
+    }
+    return snapshot;
   }
   async function update(id, change) {
     const tx=(await db()).transaction('posts','readwrite'), done=complete(tx), store=tx.objectStore('posts');
@@ -52,7 +59,7 @@ globalThis.xPostStore = (() => {
   }
   async function remember(tweet, options={}) {
     const snapshot=normalize(tweet);
-    const record=await update(snapshot.id, old=>({...old,...snapshot,
+    const record=await update(snapshot.id, old=>{preserveFullText(snapshot,old);return ({...old,...snapshot,
       // A fast, partly hydrated X page must not erase assets already cached
       // for the same unchanged text.
       media:!snapshot.media.length && old?.text===snapshot.text ? old.media || [] : snapshot.media,
@@ -62,7 +69,7 @@ globalThis.xPostStore = (() => {
       translation:old?.text===snapshot.text ? old.translation || '' : '',
       translationSource:old?.text===snapshot.text ? old.translationSource || '' : '',
       translationOriginal:old?.text===snapshot.text ? old.translationOriginal || '' : '',
-      visibleWithoutReplies:old?.visibleWithoutReplies || options.replies===false}));
+      visibleWithoutReplies:old?.visibleWithoutReplies || options.replies===false});});
     // Browsing is immediately durable; image fetching continues separately.
     cacheMedia(record.media);
     return record;
@@ -75,7 +82,7 @@ globalThis.xPostStore = (() => {
   }
   async function setSaved(tweet, saved) {
     const snapshot=normalize(tweet);
-    const record=await update(snapshot.id, old=>({...old,...snapshot,visitedAt:old?.visitedAt || Date.now(),savedAt:saved?(old?.savedAt || Date.now()):0,translation:old?.translation || tweet.translation || '',translationSource:old?.text===snapshot.text ? old?.translationSource || '' : tweet.translationSource || '',translationOriginal:old?.translationOriginal || tweet.text}));
+    const record=await update(snapshot.id, old=>{preserveFullText(snapshot,old);return ({...old,...snapshot,visitedAt:old?.visitedAt || Date.now(),savedAt:saved?(old?.savedAt || Date.now()):0,translation:old?.text===snapshot.text ? old.translation || tweet.translation || '' : tweet.text===snapshot.text ? tweet.translation || '' : '',translationSource:old?.text===snapshot.text ? old?.translationSource || '' : tweet.text===snapshot.text ? tweet.translationSource || '' : '',translationOriginal:snapshot.text});});
     cacheMedia(record.media);
     emit({type:'post',id:record.id,savedAt:record.savedAt});
     if (!saved) await trim();
