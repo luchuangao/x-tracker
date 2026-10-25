@@ -66,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       nav_feed: "Feed",
       nav_lists: "Lists", nav_saved: "Saved",
+      open_x_profile: "Open @{handle} on X",
       
       input_placeholder: "X username or URL",
       btn_add: "Add",
@@ -112,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       nav_feed: "动态",
       nav_lists: "列表", nav_saved: "收藏",
+      open_x_profile: "在 X 打开 @{handle}",
       
       input_placeholder: "输入 X 用户名或链接",
       btn_add: "添加",
@@ -888,7 +890,16 @@ document.addEventListener('DOMContentLoaded', () => {
           if (tags.children.length) { tags.classList.add('source-tags'); card.append(tags); }
           
           if (user.platform === 'x') {
-              const avatar = card.querySelector('.source-avatar');
+              let avatar = card.querySelector('.source-avatar');
+              const profile = window.xReader.profileUrl(user.handle);
+              if (profile) {
+                  const link = document.createElement('a');
+                  link.className = avatar.className; link.style.cssText = avatar.style.cssText;
+                  link.href = profile; link.target = '_blank'; link.rel = 'noopener noreferrer';
+                  link.title = TRANSLATIONS[currentLang].open_x_profile.replace('{handle}', user.handle.replace(/^@/, ''));
+                  link.setAttribute('aria-label', link.title);
+                  link.replaceChildren(...avatar.childNodes); avatar.replaceWith(link); avatar = link;
+              }
               avatar.dataset.avatarHandle = user.handle.replace(/^@/, '').toLowerCase();
               avatar.dataset.initial = displayName.charAt(0).toUpperCase();
               const revision = avatar.avatarGeneration = 0;
@@ -898,7 +909,8 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           // Click Handler
-          card.addEventListener('click', () => {
+          card.addEventListener('click', event => {
+              if (event.target.closest('a')) return;
               if (user.platform === 'x') {
                   window.xReader.open(user, includeReplies.checked, currentLang);
               } else {

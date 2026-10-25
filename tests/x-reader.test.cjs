@@ -61,6 +61,20 @@ function reader() {
   return { api: ctx.window.xReader, elements, pending, ctx };
 }
 const flush = () => new Promise(resolve => setImmediate(resolve));
+test('profile links only accept X usernames and remove a leading at-sign',()=>{
+  const {api}=reader();
+  assert.equal(api.profileUrl('@naval'),'https://x.com/naval');
+  assert.equal(api.profileUrl('valid_user1'),'https://x.com/valid_user1');
+  for(const value of ['https://other.test','naval/with_replies','someone?x=1','<script>','',null])assert.equal(api.profileUrl(value),null);
+});
+test('a post avatar opens its actual author profile and its label follows the interface language',async()=>{
+  const {api,elements,pending}=reader();api.open({handle:'naval'},false,'en');
+  pending[0].resolve({tweets:[{id:'100',handle:'sama',name:'Sam Altman',time:new Date().toISOString(),text:'A post',media:[]}],cursor:null});await flush();
+  const avatar=elements['xt-content'].children[0].children[1].children[0].children[0];
+  assert.equal(avatar.href,'https://x.com/sama');assert.equal(avatar.target,'_blank');assert.equal(avatar.rel,'noopener noreferrer');
+  assert.equal(avatar.title,'Open @sama on X');api.setLanguage('zh');assert.equal(avatar.title,'在 X 打开 @sama');
+  assert.equal(pending.length,1);
+});
 test('initial view shows one latest post without date restriction; scroll loads older posts', async () => {
   const { api, elements, pending } = reader();
   api.open({ handle: 'someone' }, false, 'zh');

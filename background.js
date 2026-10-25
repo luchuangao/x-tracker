@@ -1,4 +1,29 @@
 importScripts('x-avatar-cache.js?v=2', 'x-post-store.js?v=1.14.7', 'x-reader-background.js?v=1.14.7');
+importScripts('x-appearance.js');
+
+let appearanceGeneration = 0;
+async function updateAppearanceIcon(value) {
+  const token = ++appearanceGeneration;
+  const settings = xAppearance.normalize(value);
+  try {
+    if (settings.logoColor === xAppearance.defaults.logoColor) {
+      await chrome.action.setIcon({path:{16:'icons/logo-16.png',32:'icons/logo-32.png'}});
+      return;
+    }
+    const [small, large] = await Promise.all([xAppearance.renderIcon(settings,16), xAppearance.renderIcon(settings,32)]);
+    if (token === appearanceGeneration) await chrome.action.setIcon({imageData:{16:small,32:large}});
+  } catch (error) { console.warn('X-Tracker icon update failed:', error.message); }
+}
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.appearance) updateAppearanceIcon(changes.appearance.newValue);
+});
+chrome.storage.local.get('appearance').then(result => {
+  if (!appearanceGeneration) updateAppearanceIcon(result.appearance);
+}).catch(error => console.warn('X-Tracker appearance unavailable:', error.message));
+chrome.runtime.onStartup.addListener(() => {
+  chrome.storage.local.get('appearance').then(result => updateAppearanceIcon(result.appearance))
+    .catch(error => console.warn('X-Tracker appearance unavailable:', error.message));
+});
 // background.js
 // Handles the heavy lifting of tab management and scraping
 

@@ -19,6 +19,9 @@
       </div>
 
       <div class="xt-controls">
+        <button class="xt-btn" id="xt-appearance-toggle" type="button" title="Appearance" aria-label="Appearance" aria-haspopup="dialog">
+          <img src="icons/logo-32.png" data-appearance-logo width="24" height="24" alt="">
+        </button>
         <button class="xt-btn" id="xt-lang-toggle" type="button" title="Switch Language" aria-label="Switch Language">
           <span class="xt-btn-text" style="font-size: 14px; font-weight: 600;">EN</span>
         </button>
@@ -131,6 +134,27 @@
       </div>
     </form>
   </dialog>
+  <dialog id="appearanceDialog" class="appearance-dialog" aria-labelledby="appearanceTitle">
+    <div class="appearance-heading">
+      <h2 id="appearanceTitle" data-appearance-word="title">Appearance</h2>
+      <button id="appearanceClose" class="user-edit-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="appearance-preview"><img src="icons/logo-128.png" data-appearance-logo width="64" height="64" alt="X-Tracker"><span>X-Tracker</span></div>
+    <fieldset class="appearance-field">
+      <legend data-appearance-word="logo">Logo color</legend>
+      <div id="appearance-logo-swatches" class="appearance-swatches" role="group"></div>
+      <label class="appearance-custom"><input id="appearance-logo-custom" type="color" value="#3d528b"><span data-appearance-word="custom">Custom</span><output id="appearance-logo-value">#3D528B</output></label>
+    </fieldset>
+    <fieldset class="appearance-field">
+      <legend data-appearance-word="background">Panel background</legend>
+      <div id="appearance-background-swatches" class="appearance-swatches" role="group"></div>
+      <label class="appearance-custom"><input id="appearance-background-custom" type="color" value="#f9f9f9"><span data-appearance-word="custom">Custom</span><output id="appearance-background-value">#F9F9F9</output></label>
+    </fieldset>
+    <p id="appearanceError" class="user-edit-error" role="alert" hidden></p>
+    <div class="appearance-actions"><button id="appearanceReset" class="appearance-reset" type="button" data-appearance-word="reset">Reset</button><button id="appearanceDone" class="appearance-done" type="button" data-appearance-word="done">Done</button></div>
+  </dialog>
+  <script src="x-appearance.js"></script>
+  <script src="x-appearance-ui.js"></script>
   <script src="x-avatar-cache.js"></script>
   <script src="x-post-store.js"></script>
   <script src="x-post-tools.js"></script>

@@ -184,7 +184,12 @@ window.xReader = (() => {
         added++;
         const article = element('article', '', 'x-reader-post');
         article.setAttribute('data-post-id', tweet.id);
-        const avatar = element('div', '', 'x-post-avatar');
+        const profile = profileUrl(tweet.handle || current.user.handle);
+        const avatar = element(profile ? 'a' : 'div', '', 'x-post-avatar');
+        if (profile) {
+          avatar.href = profile; avatar.target = '_blank'; avatar.rel = 'noopener noreferrer';
+          labelAvatar(avatar, tweet.handle || current.user.handle, current.lang);
+        }
         current.avatarEntries.push({tweet, node: avatar});
         const avatarUrl = window.xAvatarCache?.validData(tweet.avatar) ? tweet.avatar : safeUrl(tweet.avatar, true);
         if (avatarUrl) {
@@ -566,6 +571,7 @@ window.xReader = (() => {
     state.back.title = t.back; state.back.setAttribute('aria-label', t.back);
     state.backLabel.textContent = t.back.replace(/^←\s*/, '');
     for (const entry of state.timeEntries) entry.time.textContent = shortTime(entry.timestamp, lang);
+    for (const entry of state.avatarEntries) if (entry.node.href) labelAvatar(entry.node, entry.tweet.handle || state.user.handle, lang);
     for (const entry of state.savedEntries.values()) entry.updateExpansion?.();
     more.textContent = state.busy ? t.loading : state.failed ? t.retry : state.collection ? t.more : t.older;
     if (!posts.children.length && !state.busy && !state.failed) status.textContent = state.collection ? t.noSaved : t.empty;
@@ -580,5 +586,14 @@ window.xReader = (() => {
     for (const button of document.querySelectorAll?.('.nav-tab-btn') || []) button.classList.remove('active');
     document.getElementById('nav-feed')?.classList.add('active');
   }
-  return { open, close, setLanguage, openCollection: (collection, lang) => { if (collection === 'saved') open({handle:''},true,lang,{collection}); }, active: () => !!state, refresh: () => { if (state) open(state.user, state.replies, state.lang,{collection:state.collection}); } };
+  function profileUrl(value) {
+    const handle = typeof value === 'string' ? value.replace(/^@/, '') : '';
+    return /^[a-zA-Z0-9_]{1,15}$/.test(handle) ? `https://x.com/${handle}` : null;
+  }
+  function labelAvatar(node, value, lang) {
+    const handle = String(value).replace(/^@/, '');
+    node.title = lang === 'zh' ? `在 X 打开 @${handle}` : `Open @${handle} on X`;
+    node.setAttribute('aria-label', node.title);
+  }
+  return { open, close, setLanguage, profileUrl, openCollection: (collection, lang) => { if (collection === 'saved') open({handle:''},true,lang,{collection}); }, active: () => !!state, refresh: () => { if (state) open(state.user, state.replies, state.lang,{collection:state.collection}); } };
 })();
